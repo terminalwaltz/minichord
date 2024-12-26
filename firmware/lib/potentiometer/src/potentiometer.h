@@ -34,7 +34,6 @@ class potentiometer{
   float alternate_range;
   int alternate_storage_adress;
   int old_main_adress_value=0;
-  int old_alternate_adress_value=0;
   //Potentiometer hardware parameters
   int pot_pin;
   int16_t dead_zone=20;

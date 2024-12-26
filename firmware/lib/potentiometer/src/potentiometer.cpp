@@ -49,17 +49,14 @@ bool potentiometer::update_parameter(bool alternate_flag){
     //let's see if one of the register was modified in the meantime, that would justify a change 
     //it's a bit verbose, but the issue is that we want to allow the interface to modify the parameter, while taking into account the pot position 
     bool trigger_change=false;
+    //here we want to make sure that primary values are always the one selected 
     if(!alternate_flag){
         if(current_sysex_parameters_pointer[main_adress]!=old_main_adress_value){
             trigger_change=true;
             old_main_adress_value=current_sysex_parameters_pointer[main_adress];
         }
-    }else{
-        if(current_sysex_parameters_pointer[alternate_adress]!=old_alternate_adress_value){
-            trigger_change=true;
-            old_alternate_adress_value=current_sysex_parameters_pointer[alternate_adress];
-        }
     }
+
     if(abs(potentiometer_old_value-potentiometer_smoothed_value)>threshold || trigger_change){
         trigger_change=false;
         this->potentiometer_old_value=potentiometer_smoothed_value;
