@@ -115,7 +115,7 @@ Once fully charged, the minichord will play for around 7 hours.
 
 ## Advanced chord selections
 
-There is two ways to access additional chords on the minichord:
+There are two ways to access additional chords on the minichord:
 
 **By combining buttons within the same column**. 
 
@@ -128,7 +128,7 @@ It is possible to push more than one button within the same column to access mor
 * The three buttons together can be combined to obtain an *diminished* chord (④).
 
 
->⚠ Please note that chord change always happens when a button is pushed. Simply releasing buttons will not change the chord. This is because properly timing a release is difficult with pushbuttons and it would lead to unwanted chord change when switching from a complex chord position. For example... 
+>⚠ Please note that a chord change always happens when a button is pushed. Simply releasing buttons will not change the chord. This is because properly timing a release is difficult with pushbuttons and it would lead to unwanted chord change when switching from a complex chord position. For example... 
 
 **By combining buttons across different columns**
 
@@ -372,7 +372,7 @@ For example, using the "Audio MIDI Setup" utility of macOS we can look at the ch
 
 ![Midi screen](./ressources/minichord_midi.jpg "Midi screen")
 
-The potentiometers control the volume of each port (MIDI CC 7). All notes are sent to the channel 1 of each port. Each port can be independently assigned to virtual instruments by most music softwares. For example, using Surge XT, using the option screen allows to select which midi input to active.
+The potentiometers control the velocity of the notes of each port. All notes are sent to the channel 1 of each port. Each port can be independently assigned to virtual instruments by most music softwares. For example, using Surge XT, using the option screen allows to select which midi input to active.
 
 ![Surge XT screen](./ressources/SurgeXToptions.jpg "Surge XT screen")
 
