@@ -41,7 +41,8 @@ hardware/PCB/additional PCB/*
 hardware/PCB/miniChord_main_PCB/*
 !hardware/PCB/miniChord_main_PCB/gerber
 !hardware/PCB/miniChord_main_PCB/MiniChord.pdf
-
+hardware/PCB/Keymaster PCB/*
+!hardware/PCB/Keymaster PCB/gerber
 #Useless things for the docc
 documentation/site/js
 documentation/site/search
