@@ -636,7 +636,7 @@ Whether normal or transparent resin, it is possible to use GTC liquid dyes to dy
 <li>Top and bottom shells;</li>
 <li>6x M2.3x8 self-tapping screws;</li>
 <li>3x M2.3x6 self-tapping screws;</li>
-
+<li>Double-sided tape.</li>
 </ul>
 </details>
 <details>
@@ -644,8 +644,7 @@ Whether normal or transparent resin, it is possible to use GTC liquid dyes to dy
     <ul>
 <br>
 <li>X-acto knife (or another precise cutter); </li>
-<li>Phillips electronics screwdrive;</li>
-<li>Double-sided tapes;</li>
+<li>Phillips electronics screwdriver.</li>
 </ul>
 </details>
 <hr>

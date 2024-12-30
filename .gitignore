@@ -46,3 +46,5 @@ hardware/PCB/Keymaster PCB/*
 #Useless things for the docc
 documentation/site/js
 documentation/site/search
+#Project management folder
+management/

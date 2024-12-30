@@ -34,7 +34,7 @@ Quantity,Part,Type,Sourcing,Link
 1,Switched Audio Jack,TH component,Included in electronics kit,Mouser
 1,JST PH 2mm 2pin male angled,TH component,Included in PCB kit,-
 1,503450 1000mAh battery,other hardware,Included in PCB kit,-
-3,Potentiometer,TH component,Included in electronics kit,Mouser
+3,Potentiometer,TH component,Included in electronics kit,"Mouser (note: if we could source a RV09AF-40-15K-B100K instead, it would be better)"
 2,Tactile switch 6x6mm,TH component,Included in electronics kit,Mouser
 21,Tactile switch 12x12mm,TH component,Included in electronics kit,Mouser
 2,Touch header female,TH component,Included in electronics kit,Mouser
@@ -49,4 +49,4 @@ Quantity,Part,Type,Sourcing,Link
 1,Bottom shell,other hardware,Included in full kit,-
 1,Double sided tape,other hardware,Included in full kit,-
 6,M2.3x8 self taping screws,other hardware,Included in full kit,-
-3,M2.3x4 self taping screws,other hardware,Included in full kit,-
+3,M2.3x6 self taping screws,other hardware,Included in full kit,-
