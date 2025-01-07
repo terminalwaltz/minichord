@@ -36,7 +36,6 @@ function handlechange(event) {
     send_parameter(minichord_device, adress, Math.round(range_value));
     if (adress == color_hue_sysex_adress) { //handling the color scheme
       var hue = Math.round(range_value);
-      console.log('hsl(' + hue + ',100%,50%)');
       //document.body.style.color = 'hsl(' + hue + ',100%,50%)';
       var elements = document.getElementsByClassName('slider');
       for (let i = 0; i < elements.length; i++) {
@@ -118,36 +117,57 @@ MIDI_request_option = {
 };
 //Initial setup 
 try {
+  console.log(">> Requesting MIDI access")
   navigator.requestMIDIAccess(MIDI_request_option)
     .then(onMIDISuccess, onMIDIFailure);
   //connection
   function onMIDISuccess(midiAccess) {
+    console.log(">> MIDI access granted")
     document.getElementById("step1").classList.remove("unsatisfied");
+    console.log(">> Available outputs:")
     for (const entry of midiAccess.outputs) {
       const output = entry[1];
       if (output.name == "minichord Port 1") {
         console.log(
-          `Output port [type:'${output.type}'] id: '${output.id}' manufacturer: '${output.manufacturer}' name: '${output.name}' version: '${output.version}'`,
+          `>>>> minichord sysex control port [type:'${output.type}'] id: '${output.id}' manufacturer: '${output.manufacturer}' name: '${output.name}' version: '${output.version}'`,
         );
         minichord_device = output
         const sysex_message = [0xF0, 0, 0, 0, 0, 0xF7]; //Query for the current settings of the minichord
         minichord_device.send(sysex_message); // sends the message.
+      }else{
+        console.log(
+          `>>>> Other port [type:'${output.type}'] id: '${output.id}' manufacturer: '${output.manufacturer}' name: '${output.name}' version: '${output.version}'`,
+        );      
       }
     }
     //handle for receiving the data
+    console.log(">> Available inputs:")
     for (const entry of midiAccess.inputs) {
       const input = entry[1];
       if (input.name == "minichord Port 1") {
         input.onmidimessage = process_current_data;
+        console.log(
+          `>>>> minichord sysex control port [type:'${input.type}'] id: '${input.id}' manufacturer: '${input.manufacturer}' name: '${input.name}' version: '${input.version}'`,
+        );
+      }else{
+        console.log(
+          `>>>> Other port [type:'${input.type}'] id: '${input.id}' manufacturer: '${input.manufacturer}' name: '${input.name}' version: '${input.version}'`,
+        );  
       }
     }
     if (minichord_device == false) {
+      console.log(">> ERROR: no minichord device found");
       document.getElementById("information_text").innerHTML = "Make sure the minichord is connected to the computer and turned on";
       document.getElementById("information_zone").focus();
+    }else{
+      console.log(">> minichord succesfully connected");
     }
     midiAccess.onstatechange = (event) => {
+      console.log(">> MIDI state change received");
+      console.log(event)
       // In case the device is disconnectd during use
       if (event.port.state == "disconnected") {
+        console.log(">> minichord was disconnected");
         minichord_device = false;
         document.getElementById("information_text").innerHTML = "> minichord disconnected, please reconnect and reload page";
         document.getElementById("status_zone").className = "";
@@ -166,6 +186,7 @@ try {
 
   }
 } catch (error) {
+  console.log(">> ERROR: MIDI access failed")
   console.error(error);
   document.getElementById("information_text").innerHTML = "> please use a compatible browser";
   document.getElementById("information_zone").focus();
@@ -173,6 +194,7 @@ try {
 
 //Handle refusal to grant access
 function onMIDIFailure() {
+  console.log(">> ERROR: MIDI access not granted by user")
   document.getElementById("information_text").innerHTML = "> please reload and provide the authorisation to access the minichord";
   document.getElementById("information_zone").focus();
 }
@@ -189,12 +211,10 @@ function set_slider_to_value(slider_num, sysex_value){
     if (result[0].getAttribute("data_type") == "float") {
       result[0].value = slider_value / float_multiplier;
       var value_zone = document.getElementById("value_zone" + slider_num);
-      console.log(value_zone);
       value_zone.innerHTML = sysex_value / float_multiplier
     } else {
       result[0].value = slider_value;
       var value_zone = document.getElementById("value_zone" + slider_num);
-      console.log(value_zone);
       value_zone.innerHTML = sysex_value
     }
   }
@@ -202,7 +222,7 @@ function set_slider_to_value(slider_num, sysex_value){
 function process_current_data(midiMessage) {
   data = midiMessage.data.slice(1);
   if (data.length != parameter_size * 2 + 1) {
-    console.log("incomplete message received, ignoring");
+    console.log(">> ERROR: incomplete message received, ignoring");
   } else {
     //the two first parameter are for control and bank number, ignored
     //the rest are applied to the sliders
@@ -212,7 +232,6 @@ function process_current_data(midiMessage) {
         alert("Please update the minichord firmware")
       }
       else if (i < base_adress_rythm + 16 & i > base_adress_rythm - 1) {
-        console.log(sysex_value);
         var j = i - base_adress_rythm;
         for (var k = 0; k < 7; k++) {
           var checkbox = document.getElementById("checkbox" + k + j);
@@ -229,14 +248,12 @@ function process_current_data(midiMessage) {
     }
     //We override the potentiometer value that might be stored (so we can rightfully test it)
     for( const i of potentiometer_memory_adress){
-      console.log(i);
       send_parameter(minichord_device, i, 512);
       set_slider_to_value(i, 512);
 
     }
     
     for( const i of volume_memory_adress){ //we make sure that the volume mean is 0.5
-      console.log(i);
       send_parameter(minichord_device, i, 0.5*100);
       set_slider_to_value(i, 0.5*100);
 
@@ -251,9 +268,7 @@ function process_current_data(midiMessage) {
     //we apply the current hue to the background of the page 
     var result = document.querySelectorAll('[adress_field="' + color_hue_sysex_adress + '"]');
     if (result.length > 0) {
-      console.log(result);
       var hue = result[0].valueAsNumber;
-      console.log('hsl(' + hue + ',100%,100%)');
       //document.body.style.color = 'hsl(' + hue + ',100%,50%)';
       var elements = document.getElementsByClassName('slider');
       for (let i = 0; i < elements.length; i++) {
@@ -285,8 +300,6 @@ function send_parameter(device, adress, value) {
   second_byte_adress = parseInt(adress / 128)
   const sysex_message = [0xF0, first_byte_adress, second_byte_adress, first_byte, second_byte, 0xF7];
   device.send(sysex_message); // sends the message.
-  console.log("sent");
-
 }
 function reset_memory() {
   if (minichord_device) {
