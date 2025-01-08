@@ -169,7 +169,7 @@ try {
       console.log(">> MIDI state change received");
       console.log(event)
       // In case the device is disconnectd during use
-      if (event.port.state == "disconnected") {
+      if (event.port.state == "disconnected" && minichord_device!=false && (event.port.name  == "minichord Port 1" || event.port.name == "minichord")) {
         console.log(">> minichord was disconnected");
         minichord_device = false;
         document.getElementById("information_text").innerHTML = "> minichord disconnected, please reconnect";
@@ -187,8 +187,6 @@ try {
       if (event.port.state =="connected" && minichord_device==false && (event.port.name  == "minichord Port 1" || event.port.name == "minichord")){
         console.log(">> a new device was connected");
         handleMIDIAccess(event.target);
-        const sysex_message = [0xF0, 0, 0, 0, 0, 0xF7]; //Query for the current settings of the minichord
-        minichord_device.send(sysex_message); // sends the message
       }
     };
     document.getElementById("step2").classList.remove("unsatisfied");
@@ -231,7 +229,7 @@ function set_slider_to_value(slider_num, sysex_value){
 function process_current_data(midiMessage) {
   data = midiMessage.data.slice(1);
   if (data.length != parameter_size * 2 + 1) {
-    console.log(">> ERROR: incomplete message received, ignoring");
+    console.log(">> Non-sysex message received, ignoring");
   } else {
     //the two first parameter are for control and bank number, ignored
     //the rest are applied to the sliders
