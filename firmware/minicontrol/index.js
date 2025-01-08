@@ -4,7 +4,6 @@ var color_hue_sysex_adress = 20;
 var base_adress_rythm = 220;
 var potentiometer_memory_adress = [4, 5, 6];
 var volume_memory_adress = [2, 3];
-
 var active_bank_number=-1
 var min_firmware_accepted=0.01;
 var firmware_adress=7;
@@ -48,7 +47,7 @@ function handlechange(event) {
     document.getElementById("information_zone").focus();
   }
 }
-
+//function that builds the checkboxes for rythm pattern
 function checkbox_array() {
   var container
   for (var i = 0; i <  + 16; i++) {
@@ -115,19 +114,12 @@ MIDI_request_option = {
   sysex: true,
   software: false
 };
-//Initial setup 
-try {
-  console.log(">> Requesting MIDI access")
-  navigator.requestMIDIAccess(MIDI_request_option)
-    .then(onMIDISuccess, onMIDIFailure);
-  //connection
-  function onMIDISuccess(midiAccess) {
-    console.log(">> MIDI access granted")
-    document.getElementById("step1").classList.remove("unsatisfied");
-    console.log(">> Available outputs:")
+//Handling the midiAccess parsing
+function handleMIDIAccess(midiAccess) {
+  console.log(">> Available outputs:")
     for (const entry of midiAccess.outputs) {
       const output = entry[1];
-      if (output.name == "minichord Port 1") {
+      if (output.name == "minichord Port 1" || output.name == "minichord"  ) {
         console.log(
           `>>>> minichord sysex control port [type:'${output.type}'] id: '${output.id}' manufacturer: '${output.manufacturer}' name: '${output.name}' version: '${output.version}'`,
         );
@@ -140,11 +132,10 @@ try {
         );      
       }
     }
-    //handle for receiving the data
     console.log(">> Available inputs:")
     for (const entry of midiAccess.inputs) {
       const input = entry[1];
-      if (input.name == "minichord Port 1") {
+      if (input.name == "minichord Port 1" || input.name == "minichord" ) {
         input.onmidimessage = process_current_data;
         console.log(
           `>>>> minichord sysex control port [type:'${input.type}'] id: '${input.id}' manufacturer: '${input.manufacturer}' name: '${input.name}' version: '${input.version}'`,
@@ -162,6 +153,18 @@ try {
     }else{
       console.log(">> minichord succesfully connected");
     }
+}
+
+//Initial setup 
+try {
+  console.log(">> Requesting MIDI access")
+  navigator.requestMIDIAccess(MIDI_request_option)
+    .then(onMIDISuccess, onMIDIFailure);
+  //connection
+  function onMIDISuccess(midiAccess) {
+    console.log(">> MIDI access granted")
+    document.getElementById("step1").classList.remove("unsatisfied");
+    handleMIDIAccess(midiAccess);
     midiAccess.onstatechange = (event) => {
       console.log(">> MIDI state change received");
       console.log(event)
@@ -169,7 +172,7 @@ try {
       if (event.port.state == "disconnected") {
         console.log(">> minichord was disconnected");
         minichord_device = false;
-        document.getElementById("information_text").innerHTML = "> minichord disconnected, please reconnect and reload page";
+        document.getElementById("information_text").innerHTML = "> minichord disconnected, please reconnect";
         document.getElementById("status_zone").className = "";
         document.getElementById("status_zone").classList.add("disconnected");
         var body = document.getElementById('body');
@@ -180,6 +183,12 @@ try {
           elements.item(0).classList.add("inactive");
           elements[0].classList.remove("active");
         }
+      }
+      if (event.port.state =="connected" && minichord_device==false && (event.port.name  == "minichord Port 1" || event.port.name == "minichord")){
+        console.log(">> a new device was connected");
+        handleMIDIAccess(event.target);
+        const sysex_message = [0xF0, 0, 0, 0, 0, 0xF7]; //Query for the current settings of the minichord
+        minichord_device.send(sysex_message); // sends the message
       }
     };
     document.getElementById("step2").classList.remove("unsatisfied");
