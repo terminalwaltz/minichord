@@ -119,7 +119,7 @@ function handleMIDIAccess(midiAccess) {
   console.log(">> Available outputs:")
     for (const entry of midiAccess.outputs) {
       const output = entry[1];
-      if (output.name == "minichord Port 1" || output.name == "minichord"  ) {
+      if (output.name.includes("minichord") && output.name.includes("1")|| output.name == "minichord"  ) {
         console.log(
           `>>>> minichord sysex control port [type:'${output.type}'] id: '${output.id}' manufacturer: '${output.manufacturer}' name: '${output.name}' version: '${output.version}'`,
         );
@@ -135,7 +135,7 @@ function handleMIDIAccess(midiAccess) {
     console.log(">> Available inputs:")
     for (const entry of midiAccess.inputs) {
       const input = entry[1];
-      if (input.name == "minichord Port 1" || input.name == "minichord" ) {
+      if (input.name.includes("minichord") && input.name.includes("1") || input.name == "minichord" ) {
         input.onmidimessage = process_current_data;
         console.log(
           `>>>> minichord sysex control port [type:'${input.type}'] id: '${input.id}' manufacturer: '${input.manufacturer}' name: '${input.name}' version: '${input.version}'`,
