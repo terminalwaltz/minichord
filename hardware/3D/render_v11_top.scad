@@ -44,7 +44,9 @@ difference(){
     //The PCB needs a 7.5mm clearance from the top interior of the shell
     
     //clear cut for component top 
-    translate([0,0,-plastic_thickness-pcb_top_clearance])linear_extrude(height =pcb_top_clearance , center = false, convexity = 20)offset(r=0.20)import (file = "./DXF/MiniChord-User_top_component_clearance.dxf",$fn=fn_base/2); 
+    translate([0,0,-plastic_thickness-pcb_top_clearance])linear_extrude(height =pcb_top_clearance , center = false, convexity = 20)offset(r=0.20)import (file = "./DXF/MiniChord-User_top_component_clearance.dxf",$fn=fn_base); 
+    //now the lead clearance
+    translate([0,0,-plastic_thickness-pcb_top_clearance])linear_extrude(height =1.95 , center = false, convexity = 20)offset(r=0.25)import (file = "./DXF/MiniChord-User_led_clearance.dxf",$fn=fn_base); 
     
     //cut for button cutout
      translate([0,0,-profile_top_part_start])linear_extrude(height =profile_top_part_start+1 , center = false, convexity = 20)offset(r=0.25)import (file = "./DXF/MiniChord-User_front_plate_cutout.dxf",$fn=fn_base*2); 

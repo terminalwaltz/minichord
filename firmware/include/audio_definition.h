@@ -327,9 +327,17 @@ AudioConnection          patchCord184(chords_main_filter, 2, chords_main_filter_
 AudioSynthWaveformDc     string_gain; 
 AudioEffectMultiply      string_multiplier;  
 AudioAmplifier           string_amplifier; 
+AudioSynthWaveformDc     string_l_stereo_gain;        
+AudioSynthWaveformDc     string_r_stereo_gain;        
+AudioEffectMultiply      string_l_stereo_multiply;  
+AudioEffectMultiply      string_r_stereo_multiply;  
 AudioSynthWaveformDc     chords_gain;        
 AudioEffectMultiply      chords_multiplier;  
 AudioAmplifier           chords_amplifier; 
+AudioSynthWaveformDc     chords_l_stereo_gain;        
+AudioSynthWaveformDc     chords_r_stereo_gain;        
+AudioEffectMultiply      chords_l_stereo_multiply;  
+AudioEffectMultiply      chords_r_stereo_multiply;  
 AudioMixer4              reverb_mixer;   
 AudioEffectPlateReverb   main_reverb;    
 AudioMixer4              stereo_l_mixer;        
@@ -340,24 +348,31 @@ AudioOutputUSB           USB_out;
 AudioConnection          patchCord2000(string_filter_mixer, 0, string_multiplier, 0);
 AudioConnection          patchCord2001(string_gain, 0, string_multiplier, 1);
 AudioConnection          patchCord2002(string_multiplier, 0, string_amplifier, 0);
-AudioConnection          patchCord2003(string_amplifier, 0, stereo_r_mixer, 0);
-AudioConnection          patchCord2004(string_amplifier, 0, stereo_l_mixer, 0);
-AudioConnection          patchCord2005(string_amplifier, 0, reverb_mixer, 0);
+AudioConnection          patchCord2003(string_amplifier, 0, string_l_stereo_multiply, 0);
+AudioConnection          patchCord2004(string_l_stereo_gain, 0, string_l_stereo_multiply, 1);
+AudioConnection          patchCord2005(string_amplifier, 0, string_r_stereo_multiply, 0);
+AudioConnection          patchCord2006(string_r_stereo_gain, 0, string_r_stereo_multiply, 1);
+AudioConnection          patchCord2007(string_r_stereo_multiply, 0, stereo_r_mixer, 0);
+AudioConnection          patchCord2008(string_l_stereo_multiply, 0, stereo_l_mixer, 0);
+AudioConnection          patchCord2009(string_amplifier, 0, reverb_mixer, 0);
 
-AudioConnection          patchCord2006(chords_main_filter_mixer, 0, chords_multiplier, 0);
-AudioConnection          patchCord2007(chords_gain, 0, chords_multiplier, 1);
-AudioConnection          patchCord2008(chords_multiplier, 0, chords_amplifier, 0);
-AudioConnection          patchCord2009(chords_amplifier, 0, stereo_r_mixer, 1);
-AudioConnection          patchCord2010(chords_amplifier, 0, stereo_l_mixer, 1);
-AudioConnection          patchCord2011(chords_amplifier, 0, reverb_mixer, 1);
+AudioConnection          patchCord2010(chords_main_filter_mixer, 0, chords_multiplier, 0);
+AudioConnection          patchCord2011(chords_gain, 0, chords_multiplier, 1);
+AudioConnection          patchCord2012(chords_multiplier, 0, chords_amplifier, 0);
+AudioConnection          patchCord2013(chords_amplifier, 0, chords_l_stereo_multiply, 0);
+AudioConnection          patchCord2014(chords_l_stereo_gain, 0, chords_l_stereo_multiply, 1);
+AudioConnection          patchCord2015(chords_amplifier, 0, chords_r_stereo_multiply, 0);
+AudioConnection          patchCord2016(chords_r_stereo_gain, 0, chords_r_stereo_multiply, 1);
+AudioConnection          patchCord2017(chords_r_stereo_multiply, 0, stereo_r_mixer, 1);
+AudioConnection          patchCord2018(chords_l_stereo_multiply, 0, stereo_l_mixer, 1);
+AudioConnection          patchCord2019(chords_amplifier, 0, reverb_mixer, 1);
 
-AudioConnection          patchCord2012(reverb_mixer, 0, main_reverb, 0);
-AudioConnection          patchCord2013(main_reverb, 0, stereo_r_mixer, 2);
-AudioConnection          patchCord2014(main_reverb, 1, stereo_l_mixer, 2);
+AudioConnection          patchCord2020(reverb_mixer, 0, main_reverb, 0);
+AudioConnection          patchCord2021(main_reverb, 0, stereo_r_mixer, 2);
+AudioConnection          patchCord2022(main_reverb, 1, stereo_l_mixer, 2);
 
-AudioConnection          patchCord2015(stereo_l_mixer, 0, DAC_out, 1);
-AudioConnection          patchCord2016(stereo_r_mixer, 0, DAC_out, 0);
+AudioConnection          patchCord2023(stereo_l_mixer, 0, DAC_out, 1);
+AudioConnection          patchCord2024(stereo_r_mixer, 0, DAC_out, 0);
 
-AudioConnection          patchCord2017(stereo_l_mixer, 0, USB_out, 1);
-AudioConnection          patchCord2018(stereo_r_mixer, 0, USB_out, 0);
-
+AudioConnection          patchCord2025(stereo_l_mixer, 0, USB_out, 1);
+AudioConnection          patchCord2026(stereo_r_mixer, 0, USB_out, 0);

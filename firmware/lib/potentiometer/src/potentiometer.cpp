@@ -1,4 +1,5 @@
 #include "potentiometer.h"
+#include <Audio.h>
 
 
 
@@ -45,7 +46,7 @@ void potentiometer::force_update(){
 
 bool potentiometer::update_parameter(bool alternate_flag){
     uint16_t current_reading = 1024-analogRead(pot_pin);
-    potentiometer_smoothed_value=(20*potentiometer_smoothed_value+current_reading)/21;
+    potentiometer_smoothed_value=(10*potentiometer_smoothed_value+current_reading)/11;
     //let's see if one of the register was modified in the meantime, that would justify a change 
     //it's a bit verbose, but the issue is that we want to allow the interface to modify the parameter, while taking into account the pot position 
     bool trigger_change=false;
@@ -64,8 +65,9 @@ bool potentiometer::update_parameter(bool alternate_flag){
             uint16_t min_value=max(0,current_sysex_parameters_pointer[main_adress]*(1.0-main_range/100.0));
             uint16_t max_value=current_sysex_parameters_pointer[main_adress]*(1.0+main_range/100.0);
             uint16_t output_value=constrain(map(potentiometer_smoothed_value, dead_zone,1024-dead_zone, min_value ,max_value ),min_value, max_value);
+            Serial.println(output_value);
             apply_audio_parameter(main_adress, output_value); //note: applied but not saved. So we can still read the initial value 
-
+            update_parameter(false); //loop again for the smoothing
         }else{
             uint16_t min_value=max(0,current_sysex_parameters_pointer[alternate_adress]*(1.0-alternate_range/100.0));
             uint16_t max_value=current_sysex_parameters_pointer[alternate_adress]*(1.0+alternate_range/100.0);

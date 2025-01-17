@@ -70,7 +70,7 @@ void apply_audio_parameter(int adress, int value) {
         current_sysex_parameters[7]=version_ID;
         break;
       case 2:
-        string_gain.amplitude(value/100.0,100);  harp_pot.update_parameter(false);  harp_attack_velocity=value/100.0*127;
+        string_gain.amplitude(value/100.0,100);   harp_attack_velocity=value/100.0*127;
         break;
       case 40:
         for (int i=0;i<12;i++){
@@ -244,7 +244,7 @@ void apply_audio_parameter(int adress, int value) {
         strings_effect_mix.gain(1,value/100.0);
         break;
       case 85:
-        reverb_mixer.gain(0,value/100.0);stereo_r_mixer.gain(0,(1-reverb_dry_proportion*value/100.0)*pan);stereo_l_mixer.gain(0,1-reverb_dry_proportion*value/100.0);
+        reverb_mixer.gain(0,value/100.0);string_r_stereo_gain.amplitude((1-reverb_dry_proportion*value/100.0)*pan,100);string_l_stereo_gain.amplitude(1-reverb_dry_proportion*value/100.0,100);
         break;
       case 86:
         string_waveshaper_mix.gain(0,1-value/100.0);string_waveshaper_mix.gain(1,value/100.0);
@@ -283,7 +283,7 @@ void apply_audio_parameter(int adress, int value) {
         string_amplifier.gain(value/100.0);
         break;
       case 3:
-        chords_gain.amplitude(value/100.0,100);  chord_pot.update_parameter(false); chord_attack_velocity=value/100.0*127;
+        chords_gain.amplitude(value/100.0,100); chord_attack_velocity=value/100.0*127;
         break;
       case 120:
         for (int i=0;i<7;i++){
@@ -554,7 +554,7 @@ void apply_audio_parameter(int adress, int value) {
         chords_effect_mix.gain(1,value/100.0);
         break;
       case 184:
-        reverb_mixer.gain(1,value/100.0);stereo_r_mixer.gain(1,1-reverb_dry_proportion*value/100.0);stereo_l_mixer.gain(1,(1-reverb_dry_proportion*value/100.0)*pan);
+        reverb_mixer.gain(1,value/100.0);chords_r_stereo_gain.amplitude(1.0-reverb_dry_proportion*value/100.0,100);chords_l_stereo_gain.amplitude((1.0-reverb_dry_proportion*value/100.0)*pan,100);
         break;
       case 185:
         chord_waveshaper_mix.gain(0,1-value/100.0);chord_waveshaper_mix.gain(1,value/100.0);

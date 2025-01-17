@@ -5,13 +5,13 @@ profile_height=17.5;
 profile_width=6;
 
 // Keep at 10 for developping, 100 for rendering 
-fn_base=10;
+fn_base=80;
 
 // Geometric Parameters   
 profile_added_offset=1.5;
 plastic_thickness=1.5;
 pcb_top_clearance=5.7;
-pcb_bottom_clearance=4.8;
+pcb_bottom_clearance=4;
 pcb_thickness=1.6;
 //The PCB needs a 7.5mm clearance from the top interior of the shell
 pcb_depth=pcb_top_clearance+pcb_thickness;
