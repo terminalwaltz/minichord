@@ -564,6 +564,21 @@ However, if there is an issue, you can always restore the default presets, so fe
 <p>The potentiometers control the velocity of the notes of each port. All notes are sent to the channel 1 of each port. Each port can be independently assigned to virtual instruments by most music softwares. For example, using Surge XT, using the option screen allows to select which midi input to active.</p>
 <p><img alt="Surge XT screen" src="../ressources/SurgeXToptions.jpg" title="Surge XT screen" /></p>
 <p>The minichord stays usable with softwate that does not distinguish between ports (such as GarageBand), but all of the notes will be attributed to a single instrument. </p>
+<h4 id="updating-the-firmware">Updating the firmware</h4>
+<p>The process to update the minichord firmware is quite simple. </p>
+<p>First you need to install the application that will allow to upload the firmware. It is provided by PJRC and precise instruction for it are available <a href="https://www.pjrc.com/teensy/loader.html">on their website</a>. It supports macOS, Linux and Windows. </p>
+<p>To upload the firmware, please use the following steps:</p>
+<ul>
+<li>Plug the battery into the minichord;</li>
+<li>Plug in the micro USB cable between the minichord and your computer;</li>
+<li>Plug the headphone into the minichord </li>
+<li>Open the Teensy Loader; </li>
+<li>Download the hex file of the latest firmware from the <a href="/source">Source section</a>;</li>
+<li>Drop the hex file on the Teensy loader;</li>
+</ul>
+<p>Once all those steps are done, use a thin pin (for example a hair pin) to push into the hole at the back of the minichord</p>
+<p><img alt="resetting the Teensy" src="../ressources/reset_hair_ping.jpg" title="resetting the Teensy" /></p>
+<p>If you carefully followed those steps, the Teensy Loader will indicate "Download Complete" then "Reboot OK". The main colour led of the PCB should light up. </p>
 </section>
 
             </main>

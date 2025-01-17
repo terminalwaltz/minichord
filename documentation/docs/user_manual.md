@@ -379,3 +379,25 @@ The potentiometers control the velocity of the notes of each port. All notes are
 The minichord stays usable with softwate that does not distinguish between ports (such as GarageBand), but all of the notes will be attributed to a single instrument. 
 
 
+
+## Updating the firmware
+
+The process to update the minichord firmware is quite simple. 
+
+First you need to install the application that will allow to upload the firmware. It is provided by PJRC and precise instruction for it are available [on their website](https://www.pjrc.com/teensy/loader.html). It supports macOS, Linux and Windows. 
+
+To upload the firmware, please use the following steps:
+
+* Plug the battery into the minichord;
+* Plug in the micro USB cable between the minichord and your computer;
+* Plug the headphone into the minichord 
+* Open the Teensy Loader; 
+* Download the hex file of the latest firmware from the [Source section](/source);
+* Drop the hex file on the Teensy loader;
+
+
+Once all those steps are done, use a thin pin (for example a hair pin) to push into the hole at the back of the minichord
+
+![resetting the Teensy](./ressources/reset_hair_ping.jpg "resetting the Teensy")
+
+If you carefully followed those steps, the Teensy Loader will indicate "Download Complete" then "Reboot OK". The main colour led of the PCB should light up. 

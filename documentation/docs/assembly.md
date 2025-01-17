@@ -357,13 +357,9 @@ Once all the component are soldered, your PCB should look like this:
 
 Before starting the soldering, it might be useful to identify the position of each component and do a dry run assembly. This will ensure you properly identify the position of each part and, in consequence, that you indeed have all the components of the BOM. 
 
-## Parts preparation
+## Teensy preparation 
 
-Some parts require a few modification before starting with the soldering. 
-
-### Teensy preparation 
-
-First, some small modifications need to be made to the Teensy 4.0 Board. 
+Before soldering, some small modifications need to be made to the Teensy 4.0 Board. 
 
 **The onboard led needs to be disabled**. This step is purely aesthetic so if you don't feel confortable doing that modification it is ok (it will simply give your minichord a soft orange glow). 
 
@@ -389,17 +385,6 @@ Once it is done, it's a good idea to check with a multimeter that there is indee
 
 ![checking the cut](./ressources/teensy_power_check.jpg "checking the cut")
 
-### Potentiometer preparation 
-
-Because of the low clearance within the minichord, it is necessary to slightly modify the potentiometers. On the top of the square enclosure, there is four round green plastic spikes. They need to be cut. 
-
-![cutting the potentiometer](./ressources/pot_cut.jpg "cutting the potentiometer")
-
-Do that for all three potentiometer, be careful not to cut yourself. 
-
-![a potentiometer after the cut](./ressources/pot_cutted.jpg "a potentiometer after the cut")
-
-We can now start with the soldering! 
 
 
 
@@ -414,16 +399,11 @@ Let's start with the 12x12mm pushbuttons. The first step is to insert them all (
 They need to be pushed firmly onto the PCB to properly latch. Make sure that they are all in place and seating flat before starting the soldering. 
 
 ![soldering the buttons](./ressources/button_soldering.jpg "soldering the buttons")
-
-Once all buttons are properly soldered, they need to be cut flush on the bottom side on the PCB. It is important because they are seating on top on the battery and we do not want their metal leads to cut into the pouch. 
-
-![cutting the leads of the buttons](./ressources/button_cutting.jpg "cutting the leads of the buttons")
-
-On PCB version 0.4 and above, a white mark shows the precise outline of the battery so you can make sure that nothing protrudes in that zone. Once all buttons are cut flush, make sure to clean the cuttings from the PCB, as they could cause unwanted contact. 
+ 
 
 ### 6x6mm pushbuttons
 
-The process is very similar to the 12x12mm button. First insert all the four pushbuttons, making sure they are fully seated before soldering. Here clipping the leads is optional but recommended. 
+The process is very similar to the 12x12mm button. First insert all the four pushbuttons, making sure they are fully seated before soldering.
 
 Once done your PCB should look like this:
 
@@ -485,10 +465,6 @@ Check that the Teensy is well seated, then do the same on the PCB's side. After 
 
 ![soldering the Teensy](./ressources/teensy_soldering.jpg "soldering the Teensy")
 
-Next, using the diagonal cutters, cut short the excess headers on the PCB's side. 
-
-![cutting the leads of the Teensy](./ressources/teensy_cutting.jpg "cutting the leads of the Teensy")
-
 
 ## Potentiometers
 
@@ -500,7 +476,6 @@ Note that a low-profile trace is used, which means that the potentiometer sit de
 
 ![well seated potentiometer](./ressources/potentiometer_seat.jpg "well seated potentiometer")
 
-
 They will hold in place while you solder them. 
 
 ## Battery connector
@@ -509,9 +484,20 @@ This component is on the backside of the PCB. The silkscreen show the correct po
 
 **If the connector is installed backward and the battery is connected that way, it will destroy the device**. You need to make sure that when the battery will be connected, the polarity will be respected. 
 
-![positionning the connector](./ressources/connector_batt.jpg "positionning the connector")
+![positionning the connector](./ressources/connector_position.jpg "positionning the connector")
 
 > Note: If you purchased the battery yourself, you need to make sure the connector attached to it is not reversed, as it sometimes happen. In that case choose the orientation of the connector to solder to make sure that the red wire of the battery indeed is connected to the positive side (following the silkscreen marking). 
+
+## Cutting excess leads in the battery zone 
+
+On the backside on the PCB note a white silkscreen rectangle showing the position of the battery inside the enclosure. 
+
+![battery zone](./ressources/battery_zone.jpg "battery zone")
+
+Using diagonal cutters, make sure to cut any leads whithin that white rectangle that is protruding more than 1mm. This is to avoid having those leads touch the battery pouch and potentially damage them 
+
+![cutting excess](./ressources/cutting_battery.jpg "cutting excess")
+
 
 ## Soldering of touch zone PCB
 
@@ -586,6 +572,9 @@ You can test it by putting the headphones to your hears and push one of the 12x1
 # **Enclosure manufacturing**
 
 The enclosure is composed of two part, the top and the bottom shell. The STL file for those parts is available in the [Source section](/source).
+
+> Note: This section show an earlier version of the enclosure
+
 
 ## Printing the parts
 
@@ -675,23 +664,9 @@ Alternatively, if you don't have a CNC router, you can look into UV DTF transfer
 
 Once you engraved keycap are finished, you can install all the buttons on the main PCB. 
 
-The engraved buttons go on the first line, and the order is F,C,G,D,A,E,B from left to right (disregard the order in the picture, from an earlier version).
+The engraved buttons go on the first line, and the order is F,C,G,D,A,E,B from left to right 
 
-![all buttons installed](./ressources/all_buttons.jpg "all buttons installed")
-
-## Attaching the battery 
-
-The battery needs to be fixed on the pcb using double sided foam tape. The foam part is very important as it protect the soft pouch of the battery from being damaged by the possible sharp bits sticking out of the PCB. 
-
-To do so, use the X-acto to cut the double sided foam tape, and press it on the battery pouch. 
-
-
-![the scotched battery](./ressources/scotched_battery.jpg "the scotched battery")
-
-Then flip the pouch and press it onto the PCB. Use the picture to identify proper placement. 
-
-![attached pouch](./ressources/pouch_attached.jpg "the installed battery")
-
+![all buttons installed](./ressources/all_buttons_installed.jpg "all buttons installed")
 
 ## Assembling the enclosure
 
@@ -703,11 +678,18 @@ To avoid any screw breakage, please follow closely the following instruction:
 
 * Use a adequately sized screwdriver. In particular, if you screwdriver slips, it might strip the screw and make the assembly impossible;
 * Pre-tap the holes on the top shell. To do that, use one of the three _small_ screw. Simply fully screw it into each one of the hole, then take it out. Repeat for each of the six holes. Do not use one of the long screw for that step.
-* Then pre-insert all of the long screw into the six corresponding holes on the bottom shell. This is simply to ensure the screw head fits all the way to the bottom of the holes. Sometimes due to print tolerances this is a tight fit, so push it in with the screwdriver, then take it out. 
+
 
 Now to the assembly itself :
 
-First install the PCB in the bottom shell. Secure the PCB with the three small screws. Be sure to not overtighten the screws: once you feel a resistance, it is enough. 
+First add a strip of double sided tape on the battery to install the battery in the dedicated space on the bottom shell. 
+![install battery](./ressources/install_battery.jpg "installing the battery")
+
+Then connect the battery to the PCB. Add a material on top of the battery to protect againt any contact (bubble wrap, foam board, etc.).
+![connecting the battery](./ressources/battery_connection.jpg "connecting the battery")
+
+
+You can then put the PCB in place (it should snap fit into place) and secure it with the three small screws. Be sure to not overtighten the screws: once you feel a resistance, it is enough. 
 
 ![bottom installed](./ressources/bottom_installed.jpg "bottom installed")
 

@@ -547,10 +547,8 @@ The main PCB requires some SMD components. If you are experimented with SDM sold
 <hr>
 
 <p>Before starting the soldering, it might be useful to identify the position of each component and do a dry run assembly. This will ensure you properly identify the position of each part and, in consequence, that you indeed have all the components of the BOM. </p>
-<h4 id="parts-preparation">Parts preparation</h4>
-<p>Some parts require a few modification before starting with the soldering. </p>
-<h5 id="teensy-preparation">Teensy preparation</h5>
-<p>First, some small modifications need to be made to the Teensy 4.0 Board. </p>
+<h4 id="teensy-preparation">Teensy preparation</h4>
+<p>Before soldering, some small modifications need to be made to the Teensy 4.0 Board. </p>
 <p><strong>The onboard led needs to be disabled</strong>. This step is purely aesthetic so if you don't feel confortable doing that modification it is ok (it will simply give your minichord a soft orange glow). </p>
 <p>The led is next to the pin 13 of the Teensy. To identify it, simply plug your teensy using a micro USB cable. The led will blink.</p>
 <p><img alt="identifying the led" src="../ressources/teensy_led.jpg" title="identifying the led" /></p>
@@ -562,23 +560,14 @@ The main PCB requires some SMD components. If you are experimented with SDM sold
 <p><img alt="cutting the VUSB" src="../ressources/teensy_power_cut.jpg" title="cutting the VUSB" /></p>
 <p>Once it is done, it's a good idea to check with a multimeter that there is indeed no contact between the two pads. </p>
 <p><img alt="checking the cut" src="../ressources/teensy_power_check.jpg" title="checking the cut" /></p>
-<h5 id="potentiometer-preparation">Potentiometer preparation</h5>
-<p>Because of the low clearance within the minichord, it is necessary to slightly modify the potentiometers. On the top of the square enclosure, there is four round green plastic spikes. They need to be cut. </p>
-<p><img alt="cutting the potentiometer" src="../ressources/pot_cut.jpg" title="cutting the potentiometer" /></p>
-<p>Do that for all three potentiometer, be careful not to cut yourself. </p>
-<p><img alt="a potentiometer after the cut" src="../ressources/pot_cutted.jpg" title="a potentiometer after the cut" /></p>
-<p>We can now start with the soldering! </p>
 <h4 id="pushbuttons-soldering">Pushbuttons soldering</h4>
 <h5 id="12x12mm-pushbuttons">12x12mm pushbuttons</h5>
 <p>Let's start with the 12x12mm pushbuttons. The first step is to insert them all (21) on the PCB. It is a close fit, so to make it easier start with the middle line of buttons. </p>
 <p><img alt="putting the buttons in place" src="../ressources/button_insertion.jpg" title="putting the buttons in place" /></p>
 <p>They need to be pushed firmly onto the PCB to properly latch. Make sure that they are all in place and seating flat before starting the soldering. </p>
 <p><img alt="soldering the buttons" src="../ressources/button_soldering.jpg" title="soldering the buttons" /></p>
-<p>Once all buttons are properly soldered, they need to be cut flush on the bottom side on the PCB. It is important because they are seating on top on the battery and we do not want their metal leads to cut into the pouch. </p>
-<p><img alt="cutting the leads of the buttons" src="../ressources/button_cutting.jpg" title="cutting the leads of the buttons" /></p>
-<p>On PCB version 0.4 and above, a white mark shows the precise outline of the battery so you can make sure that nothing protrudes in that zone. Once all buttons are cut flush, make sure to clean the cuttings from the PCB, as they could cause unwanted contact. </p>
 <h5 id="6x6mm-pushbuttons">6x6mm pushbuttons</h5>
-<p>The process is very similar to the 12x12mm button. First insert all the four pushbuttons, making sure they are fully seated before soldering. Here clipping the leads is optional but recommended. </p>
+<p>The process is very similar to the 12x12mm button. First insert all the four pushbuttons, making sure they are fully seated before soldering.</p>
 <p>Once done your PCB should look like this:</p>
 <p><img alt="after soldering all the buttons" src="../ressources/small_soldered.jpg" title="after soldering all the buttons" /></p>
 <h4 id="audio-jack-soldering">Audio jack soldering</h4>
@@ -615,8 +604,6 @@ The main PCB requires some SMD components. If you are experimented with SDM sold
 <p><img alt="tacking the Teensy" src="../ressources/teensy_tacking.jpg" title="tacking the Teensy" /></p>
 <p>Check that the Teensy is well seated, then do the same on the PCB's side. After a final check that the Teensy is well seated, you can then go over all the contact, both on the Teensy and on the PCB's side and solder them. <strong>Don't forget to solder the VUSB pin</strong>. </p>
 <p><img alt="soldering the Teensy" src="../ressources/teensy_soldering.jpg" title="soldering the Teensy" /></p>
-<p>Next, using the diagonal cutters, cut short the excess headers on the PCB's side. </p>
-<p><img alt="cutting the leads of the Teensy" src="../ressources/teensy_cutting.jpg" title="cutting the leads of the Teensy" /></p>
 <h4 id="potentiometers">Potentiometers</h4>
 <p>First place the three potentiometer. </p>
 <p><img alt="installing the potentiometers" src="../ressources/potentiometer_install.jpg" title="installing the potentiometers" /></p>
@@ -626,10 +613,15 @@ The main PCB requires some SMD components. If you are experimented with SDM sold
 <h4 id="battery-connector">Battery connector</h4>
 <p>This component is on the backside of the PCB. The silkscreen show the correct position for the connector, so place it accordingly.</p>
 <p><strong>If the connector is installed backward and the battery is connected that way, it will destroy the device</strong>. You need to make sure that when the battery will be connected, the polarity will be respected. </p>
-<p><img alt="positionning the connector" src="../ressources/connector_batt.jpg" title="positionning the connector" /></p>
+<p><img alt="positionning the connector" src="../ressources/connector_position.jpg" title="positionning the connector" /></p>
 <blockquote>
 <p>Note: If you purchased the battery yourself, you need to make sure the connector attached to it is not reversed, as it sometimes happen. In that case choose the orientation of the connector to solder to make sure that the red wire of the battery indeed is connected to the positive side (following the silkscreen marking). </p>
 </blockquote>
+<h4 id="cutting-excess-leads-in-the-battery-zone">Cutting excess leads in the battery zone</h4>
+<p>On the backside on the PCB note a white silkscreen rectangle showing the position of the battery inside the enclosure. </p>
+<p><img alt="battery zone" src="../ressources/battery_zone.jpg" title="battery zone" /></p>
+<p>Using diagonal cutters, make sure to cut any leads whithin that white rectangle that is protruding more than 1mm. This is to avoid having those leads touch the battery pouch and potentially damage them </p>
+<p><img alt="cutting excess" src="../ressources/cutting_battery.jpg" title="cutting excess" /></p>
 <h4 id="soldering-of-touch-zone-pcb">Soldering of touch zone PCB</h4>
 <p>The last bit of soldering needed is the headers on the touch zone PCB. Once again, those are technically SMD components, but easy enough to solder. Just make sure they are well aligned. </p>
 <p><img alt="touch zone pcb soldering" src="../ressources/solder_touch.jpg" title="touch zone pcb soldering" /></p>
@@ -679,6 +671,9 @@ The main PCB requires some SMD components. If you are experimented with SDM sold
 <p>You can test it by putting the headphones to your hears and push one of the 12x12mm buttons. If you don't hear anything, check that the potentiometers are not turned fully counter-clockwise.</p>
 <h3 id="enclosure-manufacturing"><strong>Enclosure manufacturing</strong></h3>
 <p>The enclosure is composed of two part, the top and the bottom shell. The STL file for those parts is available in the <a href="/source">Source section</a>.</p>
+<blockquote>
+<p>Note: This section show an earlier version of the enclosure</p>
+</blockquote>
 <h4 id="printing-the-parts">Printing the parts</h4>
 <p>Depending on what equipment you have available, <strong>you can choose different alternatives for manufacturing</strong>. </p>
 <h5 id="fdm-printing">FDM printing</h5>
@@ -742,14 +737,8 @@ The main PCB requires some SMD components. If you are experimented with SDM sold
 <p><img alt="keycaps" src="../ressources/keycap.jpg" title="keycaps" /></p>
 <p>Alternatively, if you don't have a CNC router, you can look into UV DTF transfers. It is a cheap method to allow color tranfers that can work for details up to 0.5mm. </p>
 <p>Once you engraved keycap are finished, you can install all the buttons on the main PCB. </p>
-<p>The engraved buttons go on the first line, and the order is F,C,G,D,A,E,B from left to right (disregard the order in the picture, from an earlier version).</p>
-<p><img alt="all buttons installed" src="../ressources/all_buttons.jpg" title="all buttons installed" /></p>
-<h4 id="attaching-the-battery">Attaching the battery</h4>
-<p>The battery needs to be fixed on the pcb using double sided foam tape. The foam part is very important as it protect the soft pouch of the battery from being damaged by the possible sharp bits sticking out of the PCB. </p>
-<p>To do so, use the X-acto to cut the double sided foam tape, and press it on the battery pouch. </p>
-<p><img alt="the scotched battery" src="../ressources/scotched_battery.jpg" title="the scotched battery" /></p>
-<p>Then flip the pouch and press it onto the PCB. Use the picture to identify proper placement. </p>
-<p><img alt="attached pouch" src="../ressources/pouch_attached.jpg" title="the installed battery" /></p>
+<p>The engraved buttons go on the first line, and the order is F,C,G,D,A,E,B from left to right </p>
+<p><img alt="all buttons installed" src="../ressources/all_buttons_installed.jpg" title="all buttons installed" /></p>
 <h4 id="assembling-the-enclosure">Assembling the enclosure</h4>
 <p>Now the easiest step ! </p>
 <p><img alt="all components" src="../ressources/all_components.jpg" title="all components" /></p>
@@ -757,10 +746,13 @@ The main PCB requires some SMD components. If you are experimented with SDM sold
 <ul>
 <li>Use a adequately sized screwdriver. In particular, if you screwdriver slips, it might strip the screw and make the assembly impossible;</li>
 <li>Pre-tap the holes on the top shell. To do that, use one of the three <em>small</em> screw. Simply fully screw it into each one of the hole, then take it out. Repeat for each of the six holes. Do not use one of the long screw for that step.</li>
-<li>Then pre-insert all of the long screw into the six corresponding holes on the bottom shell. This is simply to ensure the screw head fits all the way to the bottom of the holes. Sometimes due to print tolerances this is a tight fit, so push it in with the screwdriver, then take it out. </li>
 </ul>
 <p>Now to the assembly itself :</p>
-<p>First install the PCB in the bottom shell. Secure the PCB with the three small screws. Be sure to not overtighten the screws: once you feel a resistance, it is enough. </p>
+<p>First add a strip of double sided tape on the battery to install the battery in the dedicated space on the bottom shell. 
+<img alt="install battery" src="../ressources/install_battery.jpg" title="installing the battery" /></p>
+<p>Then connect the battery to the PCB. Add a material on top of the battery to protect againt any contact (bubble wrap, foam board, etc.).
+<img alt="connecting the battery" src="../ressources/battery_connection.jpg" title="connecting the battery" /></p>
+<p>You can then put the PCB in place (it should snap fit into place) and secure it with the three small screws. Be sure to not overtighten the screws: once you feel a resistance, it is enough. </p>
 <p><img alt="bottom installed" src="../ressources/bottom_installed.jpg" title="bottom installed" /></p>
 <p>No install the top shell. Make sure that all keycap are well-aligned with their respective holes. Once it is the case, it should be easy to push the top shell in place. </p>
 <p>Secure the top shell with the six long screws. Be sure to not overtighten the screws: once you feel a resistance, it is enough. </p>
