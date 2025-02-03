@@ -29,7 +29,8 @@ potentiometer chord_pot(POT_CHORD_PIN);
 potentiometer harp_pot(POT_HARP_PIN);
 potentiometer mod_pot(POT_MOD_PIN);
 LittleFS_Program myfs; // to save the settings
-bool color_led_blink_state = true;
+float color_led_blink_val = 1.0;
+bool led_blinking_flag = false;
 //>>CHORD DEFINITION<<
 //for each chord, we first have the 4 notes of the chord, then decoration that might be used in specific modes
 uint8_t major[7] = {0, 4, 7, 12, 2, 5, 9};  // After the four notes of the chord (fundamental, third, fifth of seven, and octave of fifth, the next notes are the second fourth and sixth)
@@ -351,10 +352,6 @@ void processMIDI(void) {
 
 //-->>TIMER FUNCTIONS
 // function to handle the delayed chord activation
-void blink_color_led() {
-  set_led_color(bank_led_hue, 1.0, color_led_blink_state ? 1.0 : 0.2);
-  color_led_blink_state = !color_led_blink_state;
-}
 void play_single_note(int i, IntervalTimer *timer) {
   timer->end();
   set_chord_voice_frequency(i, current_applied_chord_notes[i]);
@@ -679,13 +676,18 @@ void loop() {
   //>>handling low battery blink indicator
   uint8_t LBO_transition = LBO_flag.read_transition();
   if (LBO_transition == 1) {
-    color_led_blink_timer.priority(255);
-    //color_led_blink_timer.begin(blink_color_led, 100000); //THis might be an issue, we already use our 4 timers.  Need to be fixed
-
+    led_blinking_flag=true;
   } else if (LBO_transition == 2) {
-    //color_led_blink_timer.end();
+    led_blinking_flag=false;
     set_led_color(bank_led_hue, 1.0, 1.0);
   }
+
+   if (led_blinking_flag) {
+    set_led_color(bank_led_hue, 1.0, 0.6+0.4*sin(color_led_blink_val));
+    color_led_blink_val+=0.005;
+  } 
+
+
   //>>Handlind the hold button functions
   uint8_t hold_transition = hold_button.read_transition();
   if (hold_transition == 2) {
