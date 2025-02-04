@@ -60,4 +60,5 @@ void button_matrix::update(debouncer (&data_array)[22]){
   delayMicroseconds(5);
   bool reading=!digitalRead(read_pin_1);
   data_array[0].set(reading);
+  write_byte(~(0X0)); //putting all pins back to 5V
 }
