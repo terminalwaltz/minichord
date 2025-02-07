@@ -35,16 +35,18 @@ hardware/3D/render_script.sh
 hardware/3D/render_script.sh
 hardware/3D/render_v9_bottom.scad
 hardware/3D/render_v9_top1_5.scad
-hardware/PCB/additional PCB/*
-!hardware/PCB/additional PCB/gerber
-!hardware/PCB/additional PCB/touch_zone.pdf
+hardware/PCB/touch zones/default touch PCB/*
+!hardware/PCB/touch zones/default touch PCB/gerber
+!hardware/PCB/touch zones/default touch PCB//touch_zone.pdf
 hardware/PCB/miniChord_main_PCB/*
 !hardware/PCB/miniChord_main_PCB/gerber
 !hardware/PCB/miniChord_main_PCB/MiniChord.pdf
-hardware/PCB/Keymaster PCB/*
-!hardware/PCB/Keymaster PCB/gerber
+hardware/PCB/touch zones/keymaster PCB/*
+!hardware/PCB/touch zones/keymaster PCB/gerber
 #Useless things for the docc
 documentation/site/js
 documentation/site/search
 #Project management folder
 management/
+#Backup 
+hardware/PCB/miniChord_main_backup.zip
