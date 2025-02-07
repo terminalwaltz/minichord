@@ -198,6 +198,8 @@ IntervalTimer note_off_timer[4]; // timers for delayed chord enveloppe
 IntervalTimer led_timer;
 IntervalTimer color_led_blink_timer;
 elapsedMillis note_off_timing[4];
+elapsedMicros last_midi_clock_in;
+int midi_clock_current_step=0;
 
 uint8_t rythm_limit_change_to_every = 2; // when we allow the chord change
 elapsedMillis since_last_button_push;
@@ -227,6 +229,7 @@ uint8_t calculate_note_harp(uint8_t string, bool slashed, bool sharp);
 uint8_t calculate_note_chord(uint8_t voice, bool slashed, bool sharp);
 void set_chord_voice_frequency(uint8_t i, uint16_t current_note);
 void calculate_ws_array();
+void rythm_tick_function();
 
 //-->>LED HSV CALCULATION
 // function to calculate led RGB value, thank you SO
@@ -347,6 +350,40 @@ void processMIDI(void) {
       current_sysex_parameters[adress] = value;
       apply_audio_parameter(adress, value);
     }
+  }
+  if(type==usbMIDI.Start && rythm_mode){
+    rythm_current_step=0;
+    midi_clock_current_step=0;
+    rythm_tick_function();
+    Serial.println("Start received");
+    rythm_timer.end();
+  }
+  if(type==usbMIDI.Stop && rythm_mode){
+    rythm_timer.begin(rythm_tick_function, short_timer_period);
+  }
+
+
+  if(type==usbMIDI.Clock && rythm_mode){
+    //here we want half of the cycle to be synced with the midi clock, and half with the calculated internal clock, so we can still have shuffle
+    //recalculate the BPM
+    rythm_bpm=(rythm_bpm*10+(1000*1000*60/last_midi_clock_in)/24)/11.0;
+    last_midi_clock_in=0;
+    midi_clock_current_step+=1;
+    recalculate_timer();   
+    //once every two beat, we sync
+    if(midi_clock_current_step==24){
+      rythm_timer.begin(rythm_tick_function, short_timer_period);
+      rythm_tick_function();
+      midi_clock_current_step=0;
+    }
+    //We disable the timer to avoid having it trigger the tick too early when we arrive at the sync beat 
+    if(midi_clock_current_step>18){
+      rythm_timer.end();
+    }
+
+   
+  
+   
   }
 }
 
@@ -724,11 +761,16 @@ void loop() {
       analogWrite(RYTHM_LED_PIN, 255 * continuous_chord);
       if (rythm_mode) {
         rythm_current_step=0;
-        rythm_tick_function();
-        for (int i = 0; i < 7; i++) {
-          current_applied_chord_notes[i] = current_chord_notes[i];
-          rythm_freeze_current_chord_notes[i] = current_chord_notes[i]; // circulate the notes to the right buffers
-        }
+        Serial.println("Starting rythm timers");
+        rythm_timer.priority(254);
+        rythm_timer.begin(rythm_tick_function, short_timer_period);
+        rythm_timer_running = true;
+        rythm_timer.update(long_timer_period);
+         current_long_period = true;
+      }else{
+        Serial.println("Stopping rythm timers");
+        rythm_timer.end();
+        rythm_timer_running = false;
       }
     }
   }
@@ -752,20 +794,6 @@ void loop() {
     load_config(current_bank_number);
   }
 
-  //>>Handling the rythm mode timers start and stop
-  if (!rythm_timer_running && rythm_mode) {
-    Serial.println("Starting rythm timers");
-    rythm_timer.priority(254);
-    rythm_timer.begin(rythm_tick_function, short_timer_period);
-    rythm_timer_running = true;
-    rythm_timer.update(long_timer_period);
-    current_long_period = true;
-  }
-  if (rythm_timer_running && !rythm_mode) {
-    Serial.println("Stopping rythm timers");
-    rythm_timer.end();
-    rythm_timer_running = false;
-  }
   //>>Handling the turning off of notes in rythm mode (mandatory because we are missing one timer to do it cleanly)
   if(rythm_mode){
     for (int i = 0; i < 4; i++) {
