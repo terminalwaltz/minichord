@@ -1,13 +1,12 @@
-# **Assembly notes**
+> **Note: While the minichord kits are not yet for sale, they will be soon. To be informed about the project and the release date of those kits, please subscribe to [the newsletter](https://buttondown.com/BenjaminPoilve).**
 
+
+# **Assembly notes**
 
 Please note that depending on the kit version, you may not have to follow all the steps:
 
 * If you are building a minichord from scratch, start at [PCB Manufacturing](#pcb-manufacturing)
-* If you have the "PCB kit" or the "electronics kit", start at [Through-hole soldering](#through-hole-soldering)
-* If you have the "full kit" start at [Final assembly](#final-assembly)
-
-Those kits are not yet on sale. To be informed when they are available, please subscribe to [the newsletter](https://buttondown.com/BenjaminPoilve).
+* If you have a minichord kit start at [Enclosure Manufacturing](#enclosure-manufacturing)
 
 In any case, bill of material (BOM) and necessary tools are listed at the beginning of each section.
 
@@ -224,7 +223,7 @@ Any good fab house should accept those files for manufacture.
 </table>
 </details>
 <br>
-The main PCB requires some SMD components. If you are experimented with SDM soldering it is possible to do that step yourself. However it requires quite advanced capabilities to properly solder the IC packages used. The "PCB kit" contains the PCB with the SMD components pre-soldered. 
+The main PCB requires some SMD components. If you are experimented with SDM soldering it is possible to do that step yourself. However it requires quite advanced capabilities to properly solder the IC packages used. 
 
 For the placement of the component, please refer to [this document](./ressources/smd_assembly/g66188.png).
 
@@ -243,7 +242,6 @@ Once all the component are soldered, your PCB should look like this:
 <th><strong>ID</strong></th>
 <th><strong>Part</strong></th>
 <th><strong>Link</strong></th>
-<th><strong>Included in “PCB kit”</strong></th>
 <th><strong>Quantity</strong></th>
 </tr>
 </thead>
@@ -252,94 +250,78 @@ Once all the component are soldered, your PCB should look like this:
 <td><strong>D1</strong></td>
 <td>Red LED</td>
 <td><a href="https://www.mouser.fr/ProductDetail/604-WP169XID">Mouser</a></td>
-<td>No</td>
 <td>1</td>
 </tr>
 <tr>
 <td><strong>D2</strong></td>
 <td>5mm RKGB LED</td>
 <td>-</td>
-<td>Yes</td>
 <td>1</td>
 </tr>
 <tr>
 <td><strong>J2</strong></td>
 <td>Switched Audio Jack&nbsp;</td>
 <td><a href="https://www.mouser.fr/ProductDetail/490-SJ-3566AN">Mouser</a></td>
-<td>No</td>
 <td>1</td>
 </tr>
 <tr>
 <td><strong>J3</strong></td>
 <td>JST PH 2mm 2pin male angled</td>
 <td>-</td>
-<td>Yes</td>
 <td>1</td>
 </tr>
 <tr>
 <td><strong>N/A</strong></td>
 <td>503450 1000mAh battery</td>
 <td>-</td>
-<td>Yes</td>
 <td>1</td>
 </tr>
 <tr>
 <td><strong>&gt;&nbsp; RV1-RV3</strong></td>
 <td>Potentiometer</td>
 <td><a href="https://www.mouser.fr/ProductDetail/317-2090F-100K">Mouser</a></td>
-<td>No</td>
 <td>3</td>
 </tr>
 <tr>
 <td><strong>&gt;&nbsp; SW22, SW24, SW25, SW26</strong></td>
 <td>Tactile switch 6x6mm</td>
 <td><a href="https://www.mouser.fr/ProductDetail/653-B3F-1050">Mouser</a></td>
-<td>No</td>
 <td>4</td>
 </tr>
 <tr>
 <td><strong>&gt;&nbsp; SW1-SW21</strong></td>
 <td>Tactile switch 12x12mm</td>
 <td><a href="https://www.mouser.fr/ProductDetail/653-B3F-4050">Mouser</a></td>
-<td>No</td>
 <td>21</td>
 </tr>
 <tr>
 <td><strong>&gt;&nbsp; J1, J4</strong></td>
 <td>Touch header female</td>
 <td><a href="https://www.mouser.fr/ProductDetail/855-M20-7810345R">Mouser</a></td>
-<td>No</td>
 <td>2</td>
 </tr>
 <tr>
 <td><strong>N/A</strong></td>
 <td>Touch header male</td>
 <td><a href="https://www.mouser.fr/ProductDetail/855-M20-8760346">Mouser</a></td>
-<td>No</td>
 <td>2</td>
 </tr>
 <tr>
 <td><strong>U1</strong></td>
 <td>Teensy 4.0</td>
 <td>PJRC</td>
-<td>No</td>
 <td>1</td>
 </tr>
 <tr>
 <td><strong>N/A</strong></td>
 <td>Teensy headers</td>
 <td><a href="https://www.mouser.fr/ProductDetail/200-TSW13220TS">Mouser</a></td>
-<td>No</td>
 <td>1</td>
 </tr>
 </tbody>
 </table>
 
-<p><b>Note: </b></p>
-<ul>
-<li>If you have the "PCB kit", purchase the additional components from Mouser, and the Teensy from PJRC or any other reseller;</li>
-<li>If you have the "electronics kit", all component both from Mouser and the "PCB kit" are included. Just purchase the Teensy from PJRC or any other reseller.</li>
-</ul>
+
 <p>To facilitate ordering from Mouser, here is a <a href="https://www.mouser.fr/api/CrossDomain/GetContext?syncDomains=www&amp;returnUrl=https%3a%2f%2fwww.mouser.com%2fProjectManager%2fProjectDetail.aspx%3fAccessID%3d8661b1e86b&amp;async=False&amp;setPrefSub=False&amp;clearPrefSub=False">prefilled basket</a>. </p>
 </details>
 

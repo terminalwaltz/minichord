@@ -1,7 +1,8 @@
+> **Note: While the minichord is not yet for sale, it will be soon. To be informed about the project and the release date of tthe minichord, please subscribe to [the newsletter](https://buttondown.com/BenjaminPoilve).**
+
 
 # **Getting started**
 
->If you have a kit version of the minichord, or wish to fully build one yourself, please refer to the ["Assembly" section](/assembly)
 
 ![[#1 sheet]](./ressources/drawing_1.png "#1 sheet")
 
