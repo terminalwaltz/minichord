@@ -227,6 +227,8 @@ The main PCB requires some SMD components. If you are experimented with SDM sold
 
 For the placement of the component, please refer to [this document](./ressources/smd_assembly/g66188.png).
 
+For the manufacturer reference of the different components, please refer to [this document](https://github.com/BenjaminPoilve/MiniChord/blob/main/hardware/BOM/electronics_BOM.csv).
+
 Once all the component are soldered, your PCB should look like this:
 
 ![After SMD assembly](./ressources/smd.jpg "after SMD assembly")
