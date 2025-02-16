@@ -18,8 +18,8 @@ License (CC BY-NC 4.0)
 
 ## 3D files
 
-* [Bottom shell](https://github.com/BenjaminPoilve/MiniChord/blob/main/hardware/3D/rendering/render_v9_bottom.scad.stl) 
-* [Top shell](https://github.com/BenjaminPoilve/MiniChord/blob/main/hardware/3D/rendering/render_v9_top1_5.scad.stl)
+* [Bottom shell](https://github.com/BenjaminPoilve/MiniChord/blob/main/hardware/3D/rendering/render_v11_bottom.scad.stl) 
+* [Top shell](https://github.com/BenjaminPoilve/MiniChord/blob/main/hardware/3D/rendering/render_v11_top.scad.stl)
 
 ## 2D files 
 

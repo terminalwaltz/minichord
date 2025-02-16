@@ -695,6 +695,14 @@ void setup() {
   for (int i = 0; i < 12; i++) {
     current_harp_notes[i] = calculate_note_harp(i, slash_chord, sharp_active);
   }
+  //Checking the battery 
+  LBO_flag.set(digitalRead(BATT_LBO_PIN));
+  uint8_t LBO_value = LBO_flag.read_value();
+  if (LBO_value == 0) {
+    led_blinking_flag=true;
+  }
+
+
   Serial.println("Initialisation complete");
   digitalWrite(_MUTE_PIN, HIGH);
 }

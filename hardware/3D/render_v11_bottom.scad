@@ -113,7 +113,7 @@ difference(){
     additional_depth=20;
      translate([0,0,-profile_height])linear_extrude(height =profile_height, center = false, convexity = 20)offset(r=(target_screw_body-real_screw_d)/2)import(file = "./DXF/MiniChord-User_holes_housing.dxf",$fn=fn_base); 
     //let's stop 1mm before the pcb clearance
-    translate([0,0,-profile_height])linear_extrude(height =profile_height-(plastic_thickness+pcb_depth)-1, center = false, convexity = 20)offset(r=(target_screw_head-real_screw_d)/2)import(file = "./DXF/MiniChord-User_holes_housing.dxf",$fn=fn_base); 
+    translate([0,0,-profile_height])linear_extrude(height =profile_height-(plastic_thickness+pcb_depth), center = false, convexity = 20)offset(r=(target_screw_head-real_screw_d)/2)import(file = "./DXF/MiniChord-User_holes_housing.dxf",$fn=fn_base); 
     
    
     
