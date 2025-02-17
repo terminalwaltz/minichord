@@ -8,6 +8,7 @@ This repository contains the source file both for the minichord itself and its d
 To be informed when they are available, please subscribe to [the newsletter](https://buttondown.com/BenjaminPoilve).
 
 * [#1 project update](https://buttondown.com/BenjaminPoilve/archive/minichord-update-1/) 
+* [#2 project update](https://buttondown.com/BenjaminPoilve/archive/minichord-update-2/) 
 
 
 ## Documentation 
