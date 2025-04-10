@@ -2,13 +2,13 @@
 
 This repository contains the source file both for the minichord itself and its documentation. 
 
-
 [![Watch the video](https://github.com/BenjaminPoilve/minichord/blob/main/documentation/site/ressources/thumbnail.png)](https://www.youtube.com/watch?v=66Gu4NNnHgA)
 
-To be informed when they are available, please subscribe to [the newsletter](https://buttondown.com/BenjaminPoilve).
+To be informed about the project, please subscribe to [the newsletter](https://buttondown.com/BenjaminPoilve).
 
 * [#1 project update](https://buttondown.com/BenjaminPoilve/archive/minichord-update-1/) 
 * [#2 project update](https://buttondown.com/BenjaminPoilve/archive/minichord-update-2/) 
+* [#3 project update and pre-order link](https://buttondown.com/BenjaminPoilve/archive/minichord-update-3/) 
 
 
 ## Documentation 
