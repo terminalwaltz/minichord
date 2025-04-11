@@ -1,5 +1,3 @@
-> **Note: While the minichord is not yet for sale, it will be soon. To be informed about the project and the release date of tthe minichord, please subscribe to [the newsletter](https://buttondown.com/BenjaminPoilve).**
-
 
 # **Getting started**
 
