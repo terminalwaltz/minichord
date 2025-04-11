@@ -5,7 +5,7 @@ profile_height=17.5;
 profile_width=6;
 
 // Keep at 10 for developping, 100 for rendering 
-fn_base=10;
+fn_base=60;
 
 // Geometric Parameters   
 profile_added_offset=1.5;
@@ -34,15 +34,15 @@ difference(){
                 body(profile_added_offset,fn_base,"./DXF/MiniChord-User_edge_curve.dxf");
                 union(){
                  hull(){
-                     //angle initial:20°
-                     //angle coté holder:15°
-                    translate([193,-105,-17.5])rotate([-7.5,-15,0])cylinder(h=8,d=5);
-                    translate([150,-105,-17.5])cylinder(h=8,d=5);
+                     //Version précédante 15°
+                    translate([193,-105,-17.5])rotate([-7.5,-22,0])cylinder(h=8,d=6);
+                    translate([150,-105,-17.5])cylinder(h=8,d=6);
                    }
-                    translate([193,-105,-17.5])rotate([-7.5,-15,0])cylinder(h=11,d=5);
+                    translate([193,-105,-17.5])rotate([-7.5,-22,0])cylinder(h=11,d=6);
                 }
             }
-            translate([193,-105,-17.5])rotate([-7.5,-15,0])translate([0,0,2])cylinder(h=15,d=3);
+            translate([193,-105,-17.5])rotate([-7.5,-22,0])translate([0,0,-10])cylinder(h=30,d=3.1);
+            translate([193,-105,-12.5])rotate([0,-15-90-10,0])cylinder(h=15,d=2.8);//the screw inlet
      translate([0,-1000,-22.5])cube([1000,1000,5]);
 
 
