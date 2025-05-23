@@ -65,7 +65,7 @@ bool inhibit_button=false;
 uint8_t note_slash_level = 0;     // the level we are replacing in the chord when slashing (usually the fundamental)
 bool retrigger_chord = true;      // wether or not to retrigger the enveloppe when the chord is switched within current line (including when selecting slash chord)
 bool change_held_strings = false; // to control wether hold strings change with chord:
-
+bool chromatic_harp_mode = false; // to switch the harp to chromatic mode
 //>>SYSEX PARAMETERS<<
 // SYSEX midi message are used to control up to 256 synthesis parameters.
 const uint16_t parameter_size = 256;
@@ -477,15 +477,19 @@ uint8_t calculate_note_chord(uint8_t voice, bool slashed, bool sharp) {
 }
 // function to calculate the level of individual harp touch
 uint8_t calculate_note_harp(uint8_t string, bool slashed, bool sharp) {
-  uint8_t note = 0;
-  uint8_t level = harp_shuffling_array[harp_shuffling_selection][string];
-  // only slash the selected level of the chord (note, will be ignored if >2)
-  if (slashed && level % 10 == note_slash_level) {
-    note = (12 * int(level / 10) + float(root_button[slash_value]) + sharp * 1.0);
-  } else {
-    note = (12 * int(level / 10) + float(root_button[fundamental]) + sharp * 1.0 + float((*current_chord)[level % 10]));
+  if(!chromatic_harp_mode){
+    uint8_t note = 0;
+    uint8_t level = harp_shuffling_array[harp_shuffling_selection][string];
+    // only slash the selected level of the chord (note, will be ignored if >2)
+    if (slashed && level % 10 == note_slash_level) {
+      note = (12 * int(level / 10) + float(root_button[slash_value]) + sharp * 1.0);
+    } else {
+      note = (12 * int(level / 10) + float(root_button[fundamental]) + sharp * 1.0 + float((*current_chord)[level % 10]));
+    }
+    return note;
+  }else{
+    return string+24; //two octave up to avoid being too low
   }
-  return note;
 }
 
 //-->>RYTHM MODE UTILITIES
