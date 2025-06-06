@@ -1,7 +1,7 @@
 void apply_audio_parameter(int adress, int value) {
     switch(adress){
       case 20:
-        bank_led_hue=value; set_led_color(bank_led_hue, 1.0, 1.0);
+        bank_led_hue=value; set_led_color(bank_led_hue, 1.0, 1-led_attenuation);
         break;
       case 32:
         led_attenuation=value/100.0; set_led_color(bank_led_hue, 1.0, 1-led_attenuation);

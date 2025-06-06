@@ -222,13 +222,6 @@ In the below table, we show the way chords are commonly written in a chord chart
 
 **Most of the time, the chords are easily playable on the minichord**. If not, it is almost always possible to find acceptable substitutions, but that might require a bit more theoretical knowledge for the player (for example to calculate which slash chord might be an acceptable ersatz for a complex chord). 
 
-
-# **Default presets**
-
-**The following section presents the 12 default presets**, in order.
-
-[TBD]
-
 # **Custom presets**
 
 Making custom presets is a lot more involved, so it is to be reserved to more advanced users.
@@ -379,7 +372,7 @@ The minichord stays usable with softwate that does not distinguish between ports
 
 
 
-## Updating the firmware
+# Updating the firmware
 
 The process to update the minichord firmware is quite simple. 
 
@@ -400,3 +393,5 @@ Once all those steps are done, use a thin pin (for example a hair pin) to push i
 ![resetting the Teensy](./ressources/reset_hair_ping.jpg "resetting the Teensy")
 
 If you carefully followed those steps, the Teensy Loader will indicate "Download Complete" then "Reboot OK". The main colour led of the PCB should light up. 
+
+After an update, it might be necessary to use [minicontrol](/minicontrol) to wipe all presets back for factory using the "reset all banks" option, as changes might render previous presets incompatible (or at least weird-sounding). 
