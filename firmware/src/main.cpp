@@ -31,6 +31,7 @@ potentiometer mod_pot(POT_MOD_PIN);
 LittleFS_Program myfs; // to save the settings
 float color_led_blink_val = 1.0;
 bool led_blinking_flag = false;
+float led_attenuation = 0.0; 
 //>>CHORD DEFINITION<<
 //for each chord, we first have the 4 notes of the chord, then decoration that might be used in specific modes
 uint8_t major[7] = {0, 4, 7, 12, 2, 5, 9};  // After the four notes of the chord (fundamental, third, fifth of seven, and octave of fifth, the next notes are the second fourth and sixth)
@@ -745,7 +746,7 @@ void loop() {
     led_blinking_flag=true;
   } else if (LBO_transition == 2) {
     led_blinking_flag=false;
-    set_led_color(bank_led_hue, 1.0, 1.0);
+    set_led_color(bank_led_hue, 1.0, 1-led_attenuation); // turn the led to the bank color
   }
 
    if (led_blinking_flag) {
