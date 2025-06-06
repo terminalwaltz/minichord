@@ -1,0 +1,1 @@
+This script uses a Venv. Use the requirements.txt to set it up. 

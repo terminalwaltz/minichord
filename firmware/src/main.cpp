@@ -12,7 +12,7 @@
 #include <potentiometer.h>
 
 //>>SOFWTARE VERSION 
-int version_ID=0002; //to be read 00.01, stored at adress 7 in memory
+int version_ID=0003; //to be read 00.03, stored at adress 7 in memory
 //>>BUTTON ARRAYS<<
 debouncer harp_array[12];
 debouncer chord_matrix_array[22];
@@ -56,6 +56,7 @@ bool slash_chord = false;      // flag for when a slashed chord is currently act
 bool button_pushed = false;    // flag for when any button has been pushed during the main loop
 bool trigger_chord = false;    // flag to trigger the enveloppe of the chord
 bool sharp_active = false;     // flag for when the sharp is active
+bool flat_button_modifier= false; //flag to set the modifier to flat instead of sharp
 bool continuous_chord = false; // wether the chord is held continuously. Controlled by the "hold" button
 bool rythm_mode = false;
 IntervalTimer note_timer[4]; // timers for delayed chord enveloppe
@@ -469,9 +470,17 @@ uint8_t calculate_note_chord(uint8_t voice, bool slashed, bool sharp) {
   uint8_t level = chord_shuffling_array[chord_shuffling_selection][voice];
   // only slash the selected level of the chord (note, will be ignored if >2)
   if (slashed && level % 10 == note_slash_level) {
-    note = (12 * int(level / 10) + float(root_button[slash_value]) + sharp * 1.0);
+    if(!flat_button_modifier){
+      note = (12 * int(level / 10) + float(root_button[slash_value]) + sharp * 1.0);
+    }else{
+      note = (12 * int(level / 10) + float(root_button[slash_value]) - sharp * 1.0);
+    }
   } else {
-    note = (12 * int(level / 10) + float(root_button[fundamental]) + sharp * 1.0 + float((*current_chord)[level % 10]));
+    if(!flat_button_modifier){
+      note = (12 * int(level / 10) + float(root_button[fundamental]) + sharp * 1.0 + float((*current_chord)[level % 10]));
+    }else{
+      note = (12 * int(level / 10) + float(root_button[fundamental]) - sharp * 1.0 + float((*current_chord)[level % 10]));
+    }
   }
   return note;
 }
@@ -482,9 +491,17 @@ uint8_t calculate_note_harp(uint8_t string, bool slashed, bool sharp) {
     uint8_t level = harp_shuffling_array[harp_shuffling_selection][string];
     // only slash the selected level of the chord (note, will be ignored if >2)
     if (slashed && level % 10 == note_slash_level) {
-      note = (12 * int(level / 10) + float(root_button[slash_value]) + sharp * 1.0);
+      if(!flat_button_modifier){
+        note = (12 * int(level / 10) + float(root_button[slash_value]) + sharp * 1.0);
+      }else{
+        note = (12 * int(level / 10) + float(root_button[slash_value]) - sharp * 1.0);
+      }
     } else {
-      note = (12 * int(level / 10) + float(root_button[fundamental]) + sharp * 1.0 + float((*current_chord)[level % 10]));
+      if(!flat_button_modifier){
+        note = (12 * int(level / 10) + float(root_button[fundamental]) + sharp * 1.0 + float((*current_chord)[level % 10]));
+      }else{
+        note = (12 * int(level / 10) + float(root_button[fundamental]) - sharp * 1.0 + float((*current_chord)[level % 10]));
+      }
     }
     return note;
   }else{

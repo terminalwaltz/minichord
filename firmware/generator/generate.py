@@ -111,7 +111,7 @@ with open('parameters.json') as f: # Reserved adresses: 0 for system command and
                                         class_group="line data_line content_line inactive"
                                         if(name=="hidden"):
                                             class_group+=" hidden"
-                                        with a.div(name=id_iterator,klass=class_group):
+                                        with a.div(name=id_iterator,version=parameter["introduction_version"],klass=class_group):
                                             with a.div(klass=" bloc B4 M0 S0"):
                                                 if(not global_name_written):
                                                     a.p(_t="")
@@ -169,7 +169,7 @@ with open('parameters.json') as f: # Reserved adresses: 0 for system command and
                                         class_group="line data_line content_line inactive"
                                         if(name=="hidden"):
                                             class_group+=" hidden"
-                                        with a.div(name=id_iterator,klass=class_group):
+                                        with a.div(name=id_iterator,version=parameter["introduction_version"],klass=class_group):
                                             with a.div(klass=" bloc B4 M0 S0"):
                                                 if(not global_name_written):
                                                     a.p(_t="")
@@ -227,7 +227,7 @@ with open('parameters.json') as f: # Reserved adresses: 0 for system command and
                                         class_group="line data_line content_line inactive"
                                         if(name=="hidden"):
                                             class_group+=" hidden"
-                                        with a.div(name=id_iterator,klass=class_group, id=parameter["sysex_adress"]):
+                                        with a.div(name=id_iterator,klass=class_group,version=parameter["introduction_version"],id=parameter["sysex_adress"]):
                                             with a.div(klass=" bloc B4 M0 S0"):
                                                 if(not global_name_written):
                                                     a.p(_t="")

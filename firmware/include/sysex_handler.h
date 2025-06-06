@@ -15,6 +15,9 @@ void apply_audio_parameter(int adress, int value) {
       case 30:
         transpose_semitones=value;midi_base_note_transposed=midi_base_note+transpose_semitones;
         break;
+      case 31:
+        flat_button_modifier=value;
+        break;
       case 24:
         main_reverb.size(value/100.0);
         break;
@@ -70,12 +73,15 @@ void apply_audio_parameter(int adress, int value) {
         current_sysex_parameters[7]=version_ID;
         break;
       case 2:
-        string_gain.amplitude(value/100.0,100);   harp_attack_velocity=value/100.0*127;
+        string_gain.amplitude(value/100.0,100);  harp_attack_velocity=value/100.0*127;
         break;
       case 40:
         for (int i=0;i<12;i++){
           harp_shuffling_selection=value; current_harp_notes[i]=calculate_note_harp(i,slash_chord,sharp_active);
         }
+        break;
+      case 98:
+        chromatic_harp_mode=value;
         break;
       case 41:
         for (int i=0;i<12;i++){
@@ -244,7 +250,7 @@ void apply_audio_parameter(int adress, int value) {
         strings_effect_mix.gain(1,value/100.0);
         break;
       case 85:
-        reverb_mixer.gain(0,value/100.0);string_r_stereo_gain.amplitude((1-reverb_dry_proportion*value/100.0)*pan,100);string_l_stereo_gain.amplitude(1-reverb_dry_proportion*value/100.0,100);
+        reverb_mixer.gain(0,value/100.0/100.0);string_r_stereo_gain.amplitude((1-reverb_dry_proportion*value/100.0/100.0)*pan,100);string_l_stereo_gain.amplitude(1-reverb_dry_proportion*value/100.0/100.0,100);
         break;
       case 86:
         string_waveshaper_mix.gain(0,1-value/100.0);string_waveshaper_mix.gain(1,value/100.0);
@@ -554,7 +560,7 @@ void apply_audio_parameter(int adress, int value) {
         chords_effect_mix.gain(1,value/100.0);
         break;
       case 184:
-        reverb_mixer.gain(1,value/100.0);chords_r_stereo_gain.amplitude(1.0-reverb_dry_proportion*value/100.0,100);chords_l_stereo_gain.amplitude((1.0-reverb_dry_proportion*value/100.0)*pan,100);
+        reverb_mixer.gain(1,value/100.0/100.0);chords_r_stereo_gain.amplitude(1.0-reverb_dry_proportion*value/100.0/100.0,100);chords_l_stereo_gain.amplitude((1.0-reverb_dry_proportion*value/100.0/100.0)*pan,100);
         break;
       case 185:
         chord_waveshaper_mix.gain(0,1-value/100.0);chord_waveshaper_mix.gain(1,value/100.0);

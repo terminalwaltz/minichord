@@ -5,7 +5,7 @@ var base_adress_rythm = 220;
 var potentiometer_memory_adress = [4, 5, 6];
 var volume_memory_adress = [2, 3];
 var active_bank_number=-1
-var min_firmware_accepted=0.01;
+var min_firmware_accepted=0.02;
 var firmware_adress=7;
 var float_multiplier=100.0;
 //-->>UTILITIES
@@ -228,6 +228,7 @@ function set_slider_to_value(slider_num, sysex_value){
 }
 function process_current_data(midiMessage) {
   data = midiMessage.data.slice(1);
+  firmware_version=0;
   if (data.length != parameter_size * 2 + 1) {
     console.log(">> Non-sysex message received, ignoring");
   } else {
@@ -235,8 +236,11 @@ function process_current_data(midiMessage) {
     //the rest are applied to the sliders
     for (var i = 2; i < parameter_size; i++) {
       sysex_value = data[2 * i] + 128 * data[2 * i + 1]
-      if(i==firmware_adress && sysex_value/float_multiplier<min_firmware_accepted){
-        alert("Please update the minichord firmware")
+      if(i==firmware_adress){
+        firmware_version=sysex_value;
+        if(firmware_version<min_firmware_accepted){
+          alert("Please update the minichord firmware")
+        }
       }
       else if (i < base_adress_rythm + 16 & i > base_adress_rythm - 1) {
         var j = i - base_adress_rythm;
@@ -289,11 +293,13 @@ function process_current_data(midiMessage) {
 
     var body = document.getElementById('body');
     body.classList.remove("control_full");
-    var elements = document.getElementsByClassName('inactive');
-  
-    while (elements.length > 0) {
-      elements.item(0).classList.add("active");
-      elements[0].classList.remove("inactive");
+    var elements = document.querySelectorAll( '.inactive' )
+
+   for (let i = 0; i < elements.length; i++) {
+      if(elements[i].getAttribute("version")<=firmware_version){
+        elements[i].classList.add("active");
+        elements[i].classList.remove("inactive");
+      }
     }
   }
 }
