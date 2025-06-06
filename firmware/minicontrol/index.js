@@ -379,8 +379,8 @@ function generate_settings() {
       }
       sysex_array[ base_adress_rythm + i] = output_value
     }
-    output_string = "int16_t sysex_parameters[" + parameter_size + "]={";
     output_base64="";
+    output_string="{";
     for (let i = 0; i < (parameter_size - 1); i++) {
       output_string += String(sysex_array[i])
       output_string += ","
@@ -388,7 +388,7 @@ function generate_settings() {
       output_base64+=";"
     }
     output_string += String(sysex_array[parameter_size - 1]);
-    output_string += "};"
+    output_string += "},"
     encoded=btoa(output_base64)
     console.log(encoded)
     navigator.clipboard.writeText(encoded);

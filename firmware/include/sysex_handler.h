@@ -78,6 +78,11 @@ void apply_audio_parameter(int adress, int value) {
       case 2:
         string_gain.amplitude(value/100.0,100);  harp_attack_velocity=value/100.0*127;
         break;
+      case 99:
+        for (int i=0;i<12;i++){
+          harp_octave_change=value; current_harp_notes[i]=calculate_note_harp(i,slash_chord,sharp_active);
+        }
+        break;
       case 40:
         for (int i=0;i<12;i++){
           harp_shuffling_selection=value; current_harp_notes[i]=calculate_note_harp(i,slash_chord,sharp_active);
@@ -297,6 +302,11 @@ void apply_audio_parameter(int adress, int value) {
       case 120:
         for (int i=0;i<7;i++){
           chord_shuffling_selection=value; current_chord_notes[i]=calculate_note_chord(i,slash_chord,sharp_active);
+        }
+        break;
+      case 198:
+        for (int i=0;i<4;i++){
+          chord_octave_change=value; current_chord_notes[i]=calculate_note_chord(i,slash_chord,sharp_active);
         }
         break;
       case 121:
