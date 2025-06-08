@@ -257,7 +257,7 @@ Those parameters are grouped in three categories :
 
 By hovering on each parameter name (a question mark will appear), a short description of its function will be displayed on your screen. 
 
-You can start experimenting by modifying settings and seeing how it impacts the sound of your preset. Note that by default, changes made are not loaded into the minichord. Simply using the preset selection buttons to go one preset up then one preset down will reset the current preset. 
+You can start experimenting by modifying settings and seeing how it impacts the sound of your preset. Note that by default, changes made are not loaded into the minichord. Simply using the preset selection buttons to go one preset up then one preset down will reset the current preset. Note that the sliders can be controlled by the arrow keys to select values precisely. 
 
 **You can then use the command buttons to modify the presets loaded on your minichord**
 

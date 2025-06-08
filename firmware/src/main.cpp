@@ -1010,7 +1010,7 @@ void loop() {
   harp_sensor.update(harp_array);
   for (int i = 0; i < 12; i++) {
     int value = harp_array[i].read_transition();
-    if (value ==2) {
+    if (value ==2) {  
       set_harp_voice_frequency(i, current_harp_notes[i]);
       AudioNoInterrupts();
       envelope_string_vibrato_lfo.noteOn();
@@ -1029,8 +1029,8 @@ void loop() {
     //value = harp_array[i].read_value(); //weirdly if we use the debouncer some noteOff seems to be ignored !!!!but if we don't, then the noteoff slow down the envelope !!
     if (value == 1) {
       AudioNoInterrupts();
-      string_enveloppe_filter_array[i]->noteOff();
       string_enveloppe_array[i]->noteOff();
+      string_enveloppe_filter_array[i]->noteOff();
       AudioInterrupts();
       if(harp_started_notes[i]!=0){
         usbMIDI.sendNoteOff(harp_started_notes[i],harp_release_velocity,1,harp_port);
