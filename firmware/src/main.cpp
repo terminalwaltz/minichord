@@ -737,6 +737,10 @@ void loop() {
   if (usbMIDI.read()) {
     processMIDI();
   }
+  //Checking if the sysex is still connected 
+  if (sysex_controler_connected && (USB1_PORTSC1,7)){
+    sysex_controler_connected=false;
+  }
   //>>Updating the debouncers
   hold_button.set(digitalRead(HOLD_BUTTON_PIN));
   up_button.set(digitalRead(UP_PGM_PIN));
