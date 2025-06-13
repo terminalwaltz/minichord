@@ -1,6 +1,7 @@
 import json
 from airium import Airium
 from itertools import groupby
+import shutil
 
 a = Airium(
     base_indent='  ',  # str
@@ -335,3 +336,7 @@ with open('parameters.json') as f:
         else:
             print("Missing chord parameters in JSON")
         cpp_output.write(cpp_end_file)
+
+    # Copy the parameters.json file to the ../minicontrol/json folder
+    destination_folder = "../minicontrol/json"
+    shutil.copy('parameters.json', destination_folder)
