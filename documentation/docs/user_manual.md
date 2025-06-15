@@ -123,8 +123,8 @@ There are two ways to access additional chords on the minichord:
 It is possible to push more than one button within the same column to access more complicated chords. **The possible combinations are the following**:
 
 * The button from the third row can be combined with a button from either the first or the second row of the same column to obtain a* Major 7* (①) and *Minor 7* (②) chord of the same note;
-* The first and second row buttons can be combined within a column to obtain an *augmented* chord (③);
-* The three buttons together can be combined to obtain an *diminished* chord (④).
+* The first and second row buttons can be combined within a column to obtain an *diminished* chord (③);
+* The three buttons together can be combined to obtain an *augmented* chord (④).
 
 
 >⚠ Please note that a chord change always happens when a button is pushed. Simply releasing buttons will not change the chord. This is because properly timing a release is difficult with pushbuttons and it would lead to unwanted chord change when switching from a complex chord position. For example... 
@@ -214,8 +214,8 @@ In the below table, we show the way chords are commonly written in a chord chart
 | Dominant 7th chord | G7, G Seven, Gdom |  ![pattern](./ressources/pattern_3.png "pattern")   |
 | Major 7th chord | Gmaj7, GΔ, GΔ7, GM7, Gma7| ![pattern](./ressources/pattern_4.png "pattern")   |
 | Minor 7th chord | Gm7, G_7, Gmi7, Gmin7 | ![pattern](./ressources/pattern_5.png "pattern")   |
-| Augmented chord | Gaug, G+ |  ![pattern](./ressources/pattern_6.png "pattern")  |
-| Diminished chord | Gdim, G° | ![pattern](./ressources/pattern_7.png "pattern")   |
+| Diminished chord | Gdim, G° |  ![pattern](./ressources/pattern_6.png "pattern")  |
+| Augmented chord | Gaug, G+ | ![pattern](./ressources/pattern_7.png "pattern")   |
 | Slash chord | G/F (for F substitution ) | ![pattern](./ressources/pattern_8.png "pattern")   |
 
 
