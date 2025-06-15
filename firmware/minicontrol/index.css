@@ -376,6 +376,12 @@ body{
 dfn {
     font-style: normal;
     cursor:help;
+    transition: background-color 0.2s ease;
+}
+
+dfn.highlighted {
+    text-decoration: underline;
+
 }
 
 h4{

@@ -348,3 +348,29 @@ function load_settings() {
     }
   }
 }
+
+// Add hover highlighting for parameter names
+function initializeSliderHoverEffects() {
+  const sliders = document.querySelectorAll('.slider');
+  
+  sliders.forEach(slider => {
+    // Find the corresponding dfn element in the same line
+    const parentLine = slider.closest('.content_line');
+    if (parentLine) {
+      const dfnElement = parentLine.querySelector('dfn');
+      
+      if (dfnElement) {
+        slider.addEventListener('mouseenter', () => {
+          dfnElement.classList.add('highlighted');
+        });
+        
+        slider.addEventListener('mouseleave', () => {
+          dfnElement.classList.remove('highlighted');
+        });
+      }
+    }
+  });
+}
+
+// Initialize hover effects when the page loads
+document.addEventListener('DOMContentLoaded', initializeSliderHoverEffects);
