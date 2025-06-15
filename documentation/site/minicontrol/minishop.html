@@ -11,7 +11,7 @@
     <link href="../img/favicon-16x16.png" rel="icon" sizes="16x16" type="image/png" />
     <link href="../img/favicon-32x32.png" rel="icon" sizes="32x32" type="image/png" />
     <link href="index.css" rel="stylesheet" />
-    <title>MiniChord Presets</title>
+    <title>minishop</title>
     <style>
         /* Additional styles specific to the sharing page */
         body{
@@ -32,12 +32,16 @@
         .preset-card {
             padding: 1.5rem;
             background-color: white;
-            cursor: pointer;
             min-width: 280px;
-            max-width: 350px;
+            max-width: 450px;
             flex: 1 1 300px;
             position: relative;
             overflow: hidden;
+        }
+        .title-card{
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
         }
 
         .preset-card:hover {
@@ -50,6 +54,7 @@
             margin-bottom: 0em;
             line-height: 1.5;
             font-weight: bold;
+            flex: 1;
         }
 
         .preset-subtitle {
@@ -66,7 +71,7 @@
 
         .preset-btn {
             background-color: white;
-            border-style: 1px;
+            border-style: 2px;
             border-color: black;
             box-sizing: border-box;
             color: black;
@@ -97,6 +102,28 @@
 
         .preset-card.expanded .preset-details {
             max-height: 500px;
+        }
+
+        .expand-btn {
+           
+            background: none;
+            border: 1px solid black;
+            width: 25px;
+            height: 25px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: bold;
+            color: black;
+            z-index: 10;
+            font-family: monospace;
+        }
+
+        .expand-btn:hover {
+            background-color: rgba(0, 0, 0, 0.1);
         }
 
         .preset-description {
@@ -189,12 +216,13 @@
 </head>
 <body>
     <div id="content" class="line">
-        <div class="connection-status" id="status_zone" class="unconnected">
+        <div id="status_zone" class="connection-status unconnected">
+            ● minichord unconnected
         </div>
     
         <div class="page-header">
             <h4>minishop</h4>
-            <p>Try and save community-created presets for your minichord</p>
+            <p>Try and save community-created presets for your minichord.<br>To propose presets, send them at <a href="mailto:presets@minichord.com">presets@minichord.com</a>.</p>
         </div>
     
         <div class="preset-container" id="presetContainer">

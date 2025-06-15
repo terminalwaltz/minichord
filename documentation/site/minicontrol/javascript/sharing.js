@@ -78,10 +78,10 @@ class PresetManager {
 
         // Create parameter display using parameters.json
         const displayParameters = this.getParameterNames([
-            { address: modMainControl, control: "modMainControl" },
-            { address:altChordControl, control: "altChordControl" },
-            { address: altHarpControl, control: "altHarpControl" },
-            { address: altModControl, control: "altModControl" }
+            { address: modMainControl, control: "Modulation main" },
+            { address:altChordControl, control: "Chord secondary" },
+            { address: altHarpControl, control: "Harp secondary" },
+            { address: altModControl, control: "Modulation secondary" }
         ]);
 
         // Create parameter list
@@ -93,11 +93,14 @@ class PresetManager {
         ).join('');
 
         card.innerHTML = `
-            <h3>${preset.name}</h3>
+            <div class="title-card">
+                <h3>${preset.name}</h3>
+                <button class="expand-btn">+</button>
+            </div>
             <div class="preset-subtitle">by ${preset.author || 'Unknown'}</div>
             <div class="preset-actions">
                 <button class="preset-btn try-btn" onclick="presetManager.tryPreset(${index})">Try</button>
-                <button class="preset-btn save-btn" onclick="presetManager.savePreset(${index})">Save</button>
+                <button class="preset-btn save-btn" onclick="presetManager.savePreset(${index})">Save to current bank</button>
             </div>
             <div class="preset-details">
                 <div class="preset-description">${preset.description || 'No description available'}</div>
@@ -105,14 +108,17 @@ class PresetManager {
                     <h5>Potentiometer Parameters:</h5>
                     ${parameterElements}
                 </div>
+                <div style="margin-top: 1rem;">
+                    <button class="preset-btn" onclick="presetManager.openInMinicontrol(${index})">Open in minicontrol</button>
+                </div>
             </div>
         `;
 
         // Add click handler for expansion
-        card.addEventListener('click', (e) => {
-            if (!e.target.matches('.preset-btn')) {
-                this.toggleCard(card);
-            }
+        const expandBtn = card.querySelector('.expand-btn');
+        expandBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.toggleCard(card);
         });
 
         return card;
@@ -161,11 +167,21 @@ class PresetManager {
         allCards.forEach(otherCard => {
             if (otherCard !== card) {
                 otherCard.classList.remove('expanded');
+                const otherExpandBtn = otherCard.querySelector('.expand-btn');
+                if (otherExpandBtn) {
+                    otherExpandBtn.textContent = '+';
+                }
             }
         });
         
         // Toggle the clicked card
         card.classList.toggle('expanded');
+        
+        // Update button text
+        const expandBtn = card.querySelector('.expand-btn');
+        if (expandBtn) {
+            expandBtn.textContent = card.classList.contains('expanded') ? '−' : '+';
+        }
     }
 
     async tryPreset(presetIndex) {
@@ -173,7 +189,7 @@ class PresetManager {
         if (!preset) return;
 
         if (!miniChordController.isConnected()) {
-            alert('Please connect your MiniChord device first');
+            alert('Please connect your minichord first');
             return;
         }
 
@@ -222,6 +238,24 @@ class PresetManager {
         } catch (error) {
             console.error('Error saving preset:', error);
             this.showNotification('Error saving preset', 'error');
+        }
+    }
+
+    async openInMinicontrol(presetIndex) {
+        const preset = this.presets[presetIndex];
+        if (!preset) return;
+
+        try {
+            // Apply the preset first
+            await this.tryPreset(presetIndex);
+            
+            // Give a small delay to ensure the preset is applied, then redirect
+            setTimeout(() => {
+                window.location.href = './';
+            }, 200);
+        } catch (error) {
+            console.error('Error opening preset in minicontrol:', error);
+            this.showNotification('Error applying preset', 'error');
         }
     }
 
