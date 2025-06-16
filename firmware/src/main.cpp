@@ -12,7 +12,7 @@
 #include <potentiometer.h>
 
 //>>SOFWTARE VERSION 
-int version_ID=0003; //to be read 00.03, stored at adress 7 in memory
+int version_ID=0004; //to be read 00.03, stored at adress 7 in memory
 //>>BUTTON ARRAYS<<
 debouncer harp_array[12];
 debouncer chord_matrix_array[22];
@@ -66,7 +66,7 @@ bool sharp_active = false;     // flag for when the sharp is active
 bool flat_button_modifier= false; //flag to set the modifier to flat instead of sharp
 bool continuous_chord = false; // wether the chord is held continuously. Controlled by the "hold" button
 bool rythm_mode = false;
-bool barry_harris = false;
+bool barry_harris_mode = false;
 IntervalTimer note_timer[4]; // timers for delayed chord enveloppe
 bool inhibit_button=false;
 
@@ -151,11 +151,11 @@ float ws_sin_param = 1;
 int8_t harp_shuffling_array[6][12] = {
     //each number indicates the note for the string 0-6 are taken within the chord pattern. 
     //the /10 number indicates the octave
-    {0, 1, 2, 3, 10, 11, 12, 13, 20, 21, 22, 23},
+    {0, 1, 2, 10, 11, 12, 20, 21, 22, 30, 31, 32},
     {4, 1, 0, 2, 14, 11, 10, 12, 24, 21, 20, 22}, //add the seconds
     {5, 2, 0, 1, 15, 12, 10, 11, 25, 22, 20, 21}, //add the fourth
     {6, 2, 0, 1, 16, 12, 10, 11, 26, 22, 20, 21}, //add the sixth
-    {0, 10, 1, 11, 2, 12, 20, 30, 21, 31, 22, 32}, //octaves
+    {0, 1, 2, 3, 10, 11, 12, 13, 20, 21, 22, 23}, //replaced octave by barry_harris shuffling array 
     {0, 4, 1, 5, 2, 6, 10, 14, 11, 15, 12, 16}}; //chromatic
 int8_t harp_shuffling_selection = 0;
 int8_t chord_shuffling_array[6][7] = {
@@ -918,12 +918,12 @@ void loop() {
     } else {
       // depending on the active button identify the current chord
       if (button_maj && !button_min && !button_seventh) {
-        if (barry_harris){current_chord = &maj_sixth;}
+        if (barry_harris_mode){current_chord = &maj_sixth;}
         else
           current_chord = &major;
       }
       if (!button_maj && button_min && !button_seventh) {
-        if (barry_harris){current_chord = &min_sixth;}
+        if (barry_harris_mode){current_chord = &min_sixth;}
         else
           current_chord = &minor;
       }
@@ -937,7 +937,7 @@ void loop() {
         current_chord = &min_seventh;
       }
       if (button_maj && button_min && !button_seventh) {
-        if (barry_harris){current_chord = &full_dim;}
+        if (barry_harris_mode){current_chord = &full_dim;}
         else
           current_chord = &dim;
         
