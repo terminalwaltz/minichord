@@ -21,6 +21,9 @@ void apply_audio_parameter(int adress, int value) {
       case 31:
         flat_button_modifier=value;
         break;
+      case 33:
+        barry_harris_mode=value;
+        break;
       case 24:
         main_reverb.size(value/100.0);
         break;
