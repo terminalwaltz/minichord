@@ -36,11 +36,14 @@ float led_attenuation = 0.0;
 //for each chord, we first have the 4 notes of the chord, then decoration that might be used in specific modes
 uint8_t major[7] = {0, 4, 7, 12, 2, 5, 9};  // After the four notes of the chord (fundamental, third, fifth of seven, and octave of fifth, the next notes are the second fourth and sixth)
 uint8_t minor[7] = {0, 3, 7, 12, 1, 5, 8};
+uint8_t maj_sixth[7] = {0, 4, 7, 9, 2, 5, 12};
+uint8_t min_sixth[7] = {0, 3, 7, 9, 1, 5, 12};
 uint8_t seventh[7] = {0, 4, 10, 7, 2, 5, 9};
 uint8_t maj_seventh[7] = {0, 4, 11, 7, 2, 5, 9};
 uint8_t min_seventh[7] = {0, 3, 10, 7, 1, 5, 8};
 uint8_t aug[7] = {0, 4, 8, 12, 2, 5, 9};
 uint8_t dim[7] = {0, 3, 6, 12, 2, 5, 9};
+uint8_t full_dim[7] = {0, 3, 6, 9, 2, 5, 12};
 uint8_t root_button[7] = {11, 4, 9, 2, 7, 0, 5}; // defines the fundamental of each row in the circle of fifth, ie F,C,G,D,A,E,B from left to right
 float c_frequency = 130.81;                      // for C3
 uint8_t chord_octave_change=4;
@@ -63,6 +66,7 @@ bool sharp_active = false;     // flag for when the sharp is active
 bool flat_button_modifier= false; //flag to set the modifier to flat instead of sharp
 bool continuous_chord = false; // wether the chord is held continuously. Controlled by the "hold" button
 bool rythm_mode = false;
+bool barry_harris = false;
 IntervalTimer note_timer[4]; // timers for delayed chord enveloppe
 bool inhibit_button=false;
 
@@ -147,7 +151,7 @@ float ws_sin_param = 1;
 int8_t harp_shuffling_array[6][12] = {
     //each number indicates the note for the string 0-6 are taken within the chord pattern. 
     //the /10 number indicates the octave
-    {0, 1, 2, 10, 11, 12, 20, 21, 22, 30, 31, 32},
+    {0, 1, 2, 3, 10, 11, 12, 13, 20, 21, 22, 23},
     {4, 1, 0, 2, 14, 11, 10, 12, 24, 21, 20, 22}, //add the seconds
     {5, 2, 0, 1, 15, 12, 10, 11, 25, 22, 20, 21}, //add the fourth
     {6, 2, 0, 1, 16, 12, 10, 11, 26, 22, 20, 21}, //add the sixth
@@ -914,10 +918,14 @@ void loop() {
     } else {
       // depending on the active button identify the current chord
       if (button_maj && !button_min && !button_seventh) {
-        current_chord = &major;
+        if (barry_harris){current_chord = &maj_sixth;}
+        else
+          current_chord = &major;
       }
       if (!button_maj && button_min && !button_seventh) {
-        current_chord = &minor;
+        if (barry_harris){current_chord = &min_sixth;}
+        else
+          current_chord = &minor;
       }
       if (!button_maj && !button_min && button_seventh) {
         current_chord = &seventh;
@@ -929,7 +937,10 @@ void loop() {
         current_chord = &min_seventh;
       }
       if (button_maj && button_min && !button_seventh) {
-        current_chord = &dim;
+        if (barry_harris){current_chord = &full_dim;}
+        else
+          current_chord = &dim;
+        
       }
       if (button_maj && button_min && button_seventh) {
         current_chord = &aug;
