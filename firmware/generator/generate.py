@@ -261,7 +261,8 @@ with open('parameters.json') as f: # Reserved adresses: 0 for system command and
                         else:
                             print("Missing chord parameters in JSON")
                         
-            a.script(src='index.js')
+            a.script(src='javascript/minichordcontroller.js')
+            a.script(src='javascript/index.js')
             a.p(id="output_zone")
 
 Html_file= open("../minicontrol/index.html","w")
