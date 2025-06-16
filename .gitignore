@@ -30,6 +30,8 @@ venv/
 pip-selfcheck.json
 
 # Hardware local folder
+hardware/PCB/miniCore/
+hardware/PCB/touch zones/special keymaster PCB/
 hardware/3D/backups/
 hardware/3D/render_script.sh
 hardware/3D/render_script.sh
