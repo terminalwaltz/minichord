@@ -180,6 +180,34 @@ void apply_audio_parameter(int adress, int value) {
           string_filter_array[i]->octaveControl(value/100.0);
         }
         break;
+      case 100:
+        for (int i=0;i<12;i++){
+          string_transient_waveform_array[i]->begin(value);
+        }
+        break;
+      case 101:
+        for (int i=0;i<12;i++){
+          string_transient_waveform_array[i]->amplitude(value/100.0);
+        }
+        break;
+      case 102:
+        for (int i=0;i<12;i++){
+          string_transient_envelope_array[i]->attack(value);
+        }
+        break;
+      case 103:
+        for (int i=0;i<12;i++){
+          string_transient_envelope_array[i]->hold(value);
+        }
+        break;
+      case 104:
+        for (int i=0;i<12;i++){
+          string_transient_envelope_array[i]->decay(value);string_transient_envelope_array[i]->release(value);
+        }
+        break;
+      case 105:
+        transient_note_level=value;
+        break;
       case 59:
         string_tremolo_lfo.begin(value);
         break;
