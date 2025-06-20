@@ -13,40 +13,142 @@ function map_value(value, in_min, in_max, out_min, out_max) {
 
 //-->>INTERFACE HANDLER
 //Slider Handler
-function handlechange(event) {
-  if (miniChordController.isConnected()) {
-    const curve_type = event.getAttribute("curve");
-    let range_value;
-    if (curve_type == "exponential") {
-      range_value = Math.exp((Math.log(event.max) / event.max) * event.value);
-    } else {
-      range_value = event.value;
-    }
-    let displayed_value;
-    if (event.getAttribute("data_type") == "int") {
-      displayed_value = map_value(range_value, event.min, event.max, event.getAttribute("target_min"), event.getAttribute("target_max")).toFixed(0);
-    } else if (event.getAttribute("data_type") == "float") {
-      displayed_value = map_value(range_value, event.min, event.max, event.getAttribute("target_min"), event.getAttribute("target_max")).toFixed(2);
-      range_value = Math.round(range_value * miniChordController.float_multiplier);
-    }
-    const address = event.getAttribute("adress_field");
-    var value_zone = document.getElementById("value_zone" + event.getAttribute("adress_field"));
-    if (value_zone) {
-      value_zone.innerHTML = displayed_value;
-    }
-    miniChordController.sendParameter(address, Math.round(range_value));
-    if (address == miniChordController.color_hue_sysex_adress) { //handling the color scheme
-      var hue = Math.round(range_value);
-      var elements = document.getElementsByClassName('slider');
-      for (let i = 0; i < elements.length; i++) {
-        elements[i].style.setProperty('--slider_color', 'hsl(' + hue + ',100%,50%)');
-      }
-    }
+// Track current and initial octave values and transposition state
+let chord_octave; // Current for address 99, undefined until set
+let harp_octave;  // Current for address 198, undefined until set
+let initial_chord_octave = 2; // Default firmware octave for address 99
+let initial_harp_octave = 2;  // Default firmware octave for address 198
+let transposition_state = "positive"; // Track if in positive or negative transposition
+
+function mapNegativeTransposition(range_value) {
+  let transpose_value;
+  let chord_octave_value;
+  let harp_octave_value;
+
+  if (range_value < 0) {
+    transpose_value = Math.round(range_value + 12); // e.g., -1 → 11
+    chord_octave_value = 1; // +12 semitones
+    harp_octave_value = 1;  // +12 semitones
+    console.log("Negative transposition:", { range_value, transpose_value, chord_octave_value, harp_octave_value, initial_chord_octave, initial_harp_octave });
+    transposition_state = "negative";
   } else {
-    event.value = event.getAttribute("value");
-    document.getElementById("information_zone").focus();
+    transpose_value = Math.round(range_value); // e.g., 12 → 12
+    if (transposition_state === "negative") {
+      chord_octave_value = initial_chord_octave;
+      harp_octave_value = initial_harp_octave;
+      console.log("Transition to positive transposition:", { range_value, transpose_value, chord_octave_value, harp_octave_value, initial_chord_octave, initial_harp_octave });
+      transposition_state = "positive";
+    } else {
+      chord_octave_value = null;
+      harp_octave_value = null;
+      console.log("Continued positive transposition:", { range_value, transpose_value });
+    }
+  }
+
+  return {
+    transpose_value: Math.max(0, Math.min(127, transpose_value)),
+    chord_octave_value,
+    harp_octave_value
+  };
+}
+
+function handlechange(element) {
+  console.log("handlechange triggered, element:", {
+    tagName: element?.tagName || "undefined",
+    value: element?.value || "undefined",
+    attributes: element ? Array.from(element.attributes || []).reduce((obj, attr) => {
+      obj[attr.name] = attr.value;
+      return obj;
+    }, {}) : "no attributes"
+  });
+
+  if (!element) {
+    console.error("handlechange: Invalid element");
+    return;
+  }
+
+  try {
+    if (miniChordController.isConnected()) {
+      console.log("MiniChord connected");
+      const curve_type = element.getAttribute("curve");
+      let range_value = parseFloat(element.value) || 0;
+      console.log("range_value:", range_value, "curve_type:", curve_type);
+
+      if (curve_type === "exponential") {
+        range_value = Math.exp((Math.log(parseFloat(element.max)) / parseFloat(element.max)) * range_value);
+      }
+
+      let displayed_value;
+      const address = String(element.getAttribute("adress_field") || "");
+      const transposition_address = "30";
+      const chord_octave_address = "99";
+      const harp_octave_address = "198";
+
+      if (element.getAttribute("data_type") === "int") {
+        displayed_value = map_value(range_value, parseFloat(element.min), parseFloat(element.max),
+          parseFloat(element.getAttribute("target_min")), parseFloat(element.getAttribute("target_max"))).toFixed(0);
+
+        if (address === transposition_address) {
+          const { transpose_value, chord_octave_value, harp_octave_value } = mapNegativeTransposition(range_value);
+          miniChordController.sendParameter(transposition_address, transpose_value);
+          console.log("sendParameter called:", { address: transposition_address, transpose_value });
+          if (chord_octave_value !== null) {
+            miniChordController.sendParameter(chord_octave_address, chord_octave_value);
+            console.log("sendParameter called:", { address: chord_octave_address, chord_octave_value });
+            chord_octave = chord_octave_value;
+          }
+          if (harp_octave_value !== null) {
+            miniChordController.sendParameter(harp_octave_address, harp_octave_value);
+            console.log("sendParameter called:", { address: harp_octave_address, harp_octave_value });
+            harp_octave = harp_octave_value;
+          }
+        } else {
+          const send_value = Math.max(0, Math.round(range_value));
+          console.log("Non-transposition int:", { send_value });
+          miniChordController.sendParameter(address, send_value);
+          console.log("sendParameter called:", { address, send_value });
+          if (address === chord_octave_address) {
+            chord_octave = send_value;
+            initial_chord_octave = send_value;
+            console.log("Updated chord_octave:", chord_octave, "Initial:", initial_chord_octave);
+          } else if (address === harp_octave_address) {
+            harp_octave = send_value;
+            initial_harp_octave = send_value;
+            console.log("Updated harp_octave:", harp_octave, "Initial:", initial_harp_octave);
+          }
+        }
+      } else if (element.getAttribute("data_type") === "float") {
+        displayed_value = map_value(range_value, parseFloat(element.min), parseFloat(element.max),
+          parseFloat(element.getAttribute("target_min")), parseFloat(element.getAttribute("target_max"))).toFixed(2);
+        const send_value = Math.round(range_value * miniChordController.float_multiplier);
+        miniChordController.sendParameter(address, send_value);
+        console.log("sendParameter called:", { address, send_value });
+      }
+
+      console.log("Final:", { address, displayed_value });
+      const value_zone = document.getElementById("value_zone" + address);
+      if (value_zone) {
+        value_zone.innerHTML = displayed_value;
+      }
+
+      if (address === miniChordController.color_hue_sysex_adress) {
+        const hue = Math.round(Math.max(0, Math.min(360, range_value)));
+        const elements = document.getElementsByClassName('slider');
+        for (let i = 0; i < elements.length; i++) {
+          elements[i].style.setProperty('--slider_color', 'hsl(' + hue + ',100%,50%)');
+        }
+      }
+    } else {
+      console.log("MiniChord not connected");
+      element.value = element.getAttribute("value");
+      document.getElementById("information_zone")?.focus();
+    }
+  } catch (error) {
+    console.error("handlechange error:", error);
   }
 }
+
+
 //function that builds the checkboxes for rythm pattern
 function checkbox_array() {
   var container
