@@ -1037,6 +1037,7 @@ void loop() {
         usbMIDI.sendNoteOff(harp_started_notes[i],harp_release_velocity,1,harp_port);
         harp_started_notes[i]=0;
       }
+      uint8_t harp_attack_velocity = harp_attack_velocity > 0 ? harp_attack_velocity : 64; // Default to 64 if velocity is 0
       usbMIDI.sendNoteOn(midi_base_note_transposed+current_harp_notes[i],harp_attack_velocity,1,harp_port);
       harp_started_notes[i]=midi_base_note_transposed+current_harp_notes[i];
 
