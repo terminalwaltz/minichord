@@ -150,6 +150,21 @@ AudioEffectEnvelope *chord_envelope_array[4] = {&voice1_envelope, &voice2_envelo
 // waveshaper shape
 float wave_shape[257] = {};
 float ws_sin_param = 1;
+// waveform array 
+int8_t waveform_array[12] = {
+    0, //WAVEFORM_SINE
+    1, //WAVEFORM_SAWTOOTH
+    2, //WAVEFORM_SQUARE
+    3, //WAVEFORM_TRIANGLE
+    12, //WAVEFORM_BANDLIMIT_PULSE
+    5, //WAVEFORM_PULSE
+    6, //WAVEFORM_SAWTOOTH_REVERSE
+    7, //WAVEFORM_SAMPLE_HOLD 
+    8, //WAVEFORM_TRIANGLE_VARIABLE
+    9, //WAVEFORM_BANDLIMIT_SAWTOOTH
+    10,//WAVEFORM_BANDLIMIT_SAWTOOTH_REVERSE
+    11, //WAVEFORM_BANDLIMIT_SQUARE
+}; 
 // shuffling arrays and index for the harp
 int8_t harp_shuffling_array[6][12] = {
     //each number indicates the note for the string 0-6 are taken within the chord pattern. 
