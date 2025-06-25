@@ -714,7 +714,7 @@ void setup() {
   for(int i=0;i<12;i++){
     string_transient_envelope_array[i]->sustain(0);//don't need sustain for the transient
   }
-  all_string_mix.gain(3,0.005); //for the transient
+  all_string_mix.gain(3,0.02); //for the transient
 
   // initialising the rest of the hardware
   chord_matrix.setup();
