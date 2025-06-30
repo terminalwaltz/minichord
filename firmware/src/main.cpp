@@ -17,6 +17,15 @@ int version_ID=0004; //to be read 00.03, stored at adress 7 in memory
 debouncer harp_array[12];
 debouncer chord_matrix_array[22];
 
+// Sharp button state variables (global, unchanged or add if missing)
+unsigned long last_sharp_press = 0;
+int sharp_press_count = 0;
+const unsigned long TAP_TIMEOUT = 700;    // Time window for taps (ms, increased)
+const unsigned long DOUBLE_TAP_GAP = 600; // Max time between presses for double tap (ms, increased)
+const unsigned long HOLD_TIMEOUT = 800;  // Max hold time before reset (ms, increased)
+bool sharp_click_handled = false;
+bool last_sharp_active = false;           // Track previous state of sharp_active
+
 //>>HARDWARE SETUP<<
 harp harp_sensor;
 button_matrix chord_matrix(SHIFT_DATA_PIN, SHIFT_STORAGE_CLOCK_PIN, SHIFT_CLOCK_PIN, READ_MATRIX_1_PIN, READ_MATRIX_2_PIN, READ_MATRIX_3_PIN);
@@ -999,8 +1008,68 @@ void loop() {
       button_pushed = false; // in any case after that loop, we can reset button pushed
     }
   }
-  // Now let's read the button transitions
-  int sharp_transition = chord_matrix_array[0].read_transition(); // first the sharp
+
+
+// Sharp button handling for single-tap/double-tap
+sharp_active = chord_matrix_array[0].read_value(); // Record the current value
+
+// Handle sharp button transitions using read_value()
+if (!last_sharp_active && sharp_active) { // Sharp button pressed (false to true)
+  unsigned long current_time = millis();
+  // Increment press count
+  sharp_press_count++;
+  last_sharp_press = current_time;
+  sharp_click_handled = false;
+  Serial.print("Sharp press detected, count: "); Serial.println(sharp_press_count);
+} else if (sharp_active && sharp_press_count > 0 && millis() - last_sharp_press > HOLD_TIMEOUT) {
+  // Button held too long, reset count
+  sharp_press_count = 0;
+  sharp_click_handled = true;
+  Serial.println("Sharp hold detected, count reset");
+} else if (last_sharp_active && !sharp_active && !sharp_click_handled && sharp_press_count > 0) { // Sharp button released (true to false)
+  unsigned long current_time = millis();
+  // Check for single or double tap on release
+  if (current_time - last_sharp_press <= TAP_TIMEOUT && current_line == -1) {
+    if (sharp_press_count == 1 && current_time - last_sharp_press > DOUBLE_TAP_GAP) {
+      // Single tap detected (only if no second press within DOUBLE_TAP_GAP)
+      Serial.println("Sharp single tap");
+      //Single tap function here
+      apply_audio_parameter(60, 0);
+      sharp_press_count = 0;
+      sharp_click_handled = true;
+      Serial.println("Sharp single tap processed, count reset");
+    } else if (sharp_press_count >= 2) {
+      // Double tap detected
+      Serial.println("Sharp double tap");
+      // Double tap function here
+      apply_audio_parameter(60, 846);
+      sharp_press_count = 0;
+      sharp_click_handled = true;
+      Serial.println("Sharp double tap processed, count reset");
+    }
+    // Do not reset count here; wait for DOUBLE_TAP_GAP or another press
+  }
+}
+
+// Check for timeout to reset count if no further presses occur
+if (!sharp_active && sharp_press_count > 0 && !sharp_click_handled && millis() - last_sharp_press > DOUBLE_TAP_GAP) {
+  // No further presses in double-tap window, process single tap if applicable
+  if (sharp_press_count == 1 && current_line == -1) {
+    Serial.println("Sharp single tap (timeout)");
+    Serial.println("Sharp single tap processed, count reset");
+    //Single tap function here
+    apply_audio_parameter(60, 0);
+  }
+  sharp_press_count = 0;
+  sharp_click_handled = true;
+  Serial.println("Timeout, count reset");
+}
+
+// Update last state for next iteration
+last_sharp_active = sharp_active;
+
+// Now the rest of the chord buttons (unchanged)
+int sharp_transition = chord_matrix_array[0].read_transition(); // first the sharp
   if (sharp_transition > 1 && current_line != -1) {               // want to trigger the button pushed, only if buttons are selected
     button_pushed = true;
   }
@@ -1037,6 +1106,7 @@ void loop() {
         usbMIDI.sendNoteOff(harp_started_notes[i],harp_release_velocity,1,harp_port);
         harp_started_notes[i]=0;
       }
+      uint8_t harp_attack_velocity = harp_attack_velocity > 0 ? harp_attack_velocity : 64; // Default to 64 if velocity is 0
       usbMIDI.sendNoteOn(midi_base_note_transposed+current_harp_notes[i],harp_attack_velocity,1,harp_port);
       harp_started_notes[i]=midi_base_note_transposed+current_harp_notes[i];
 
