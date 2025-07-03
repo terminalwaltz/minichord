@@ -12,7 +12,7 @@
 #include <potentiometer.h>
 
 //>>SOFWTARE VERSION 
-int version_ID=0004; //to be read 00.03, stored at adress 7 in memory
+int version_ID=0005; //to be read 00.03, stored at adress 7 in memory
 //>>BUTTON ARRAYS<<
 debouncer harp_array[12];
 debouncer chord_matrix_array[22];
@@ -45,6 +45,32 @@ uint8_t aug[7] = {0, 4, 8, 12, 2, 5, 9};
 uint8_t dim[7] = {0, 3, 6, 12, 2, 5, 9};
 uint8_t full_dim[7] = {0, 3, 6, 9, 2, 5, 12};
 uint8_t root_button[7] = {11, 4, 9, 2, 7, 0, 5}; // defines the fundamental of each row in the circle of fifth, ie F,C,G,D,A,E,B from left to right
+
+// Define which buttons need +12 semitones for each frame shift
+/* bool needs_octave_boost[7][7] = {
+  {false, false, false, false, false, false, false}, // Shift 0 (C): F4, C4, G4, D4, A4, E4, B4
+  {false, true,  false, false, false, false, false}, // Shift 1 (D): F4, C5, G4, D4, A4, E4, B4
+  {false, true,  false, true,  false, false, false}, // Shift 2 (E): F4, C5, G4, D5, A4, E4, B4
+  {false, true,  false, true,  false, false, true},  // Shift 3 (F): F4, C5, G4, D5, A4, E4, B5
+  {false, true,  false, true,  true,  false, true},  // Shift 4 (G): F4, C5, G4, D5, A5, E4, B5
+  {false, true,  true,  true,  true,  false, true},  // Shift 5 (A): F4, C5, G5, D5, A5, E4, B5
+  {false, true,  true,  true,  true,  true,  true}   // Shift 6 (B): F4, C5, G5, D5, A5, E5, B5
+}; */
+
+bool needs_octave_boost[7][7] = {
+  {false, false, false, false, false, false, false}, // Shift 0: B4, E4, A4, D4, G4, C4, F4
+  {false, false, false, false, false, true,  false}, // Shift 1: B4, E4, A4, D4, G4, C5, F4
+  {false, false, false, true,  false, true,  false}, // Shift 2: B4, E4, A4, D5, G4, C5, F4
+  {false, true,  false, true,  false, true,  false}, // Shift 3: B4, E5, A4, D5, G4, C5, F4
+  {false, true,  false, true,  false, true,  true},  // Shift 4: B4, E5, A4, D5, G4, C5, F5
+  {false, true,  false, true,  true,  true,  true},  // Shift 5: B4, E5, A4, D5, G5, C5, F5
+  {false, true,  true,  true,  true,  true,  true}   // Shift 6: B4, E5, A5, D5, G5, C5, F5
+};
+
+// Frame shift variable and SysEx address
+uint8_t chord_frame_shift = 0; // 0 = C, 1 = D, 2 = E, 3 = F, 4 = G, 5 = A, 6 = B
+const uint8_t chord_frame_shift_sysex = 18; // SysEx address for frame shift
+
 float c_frequency = 130.81;                      // for C3
 uint8_t chord_octave_change=4;
 uint8_t harp_octave_change=4;
@@ -129,6 +155,9 @@ AudioEffectEnvelope *string_enveloppe_array[12] = {&envelope_string_1, &envelope
 AudioEffectEnvelope *string_enveloppe_filter_array[12] = {&envelope_filter_1, &envelope_filter_2, &envelope_filter_3, &envelope_filter_4, &envelope_filter_5, &envelope_filter_6, &envelope_filter_7, &envelope_filter_8, &envelope_filter_9, &envelope_filter_10, &envelope_filter_11, &envelope_filter_12};
 AudioMixer4 *string_mixer_array[3] = {&string_mix_1, &string_mix_2, &string_mix_3};
 AudioFilterStateVariable *string_filter_array[12] = {&filter_string_1, &filter_string_2, &filter_string_3, &filter_string_4, &filter_string_5, &filter_string_6, &filter_string_7, &filter_string_8, &filter_string_9, &filter_string_10, &filter_string_11, &filter_string_12};
+AudioSynthWaveform *string_transient_waveform_array[12] = {&waveform_transient_1, &waveform_transient_2, &waveform_transient_3, &waveform_transient_4, &waveform_transient_5, &waveform_transient_6, &waveform_transient_7, &waveform_transient_8, &waveform_transient_9, &waveform_transient_10, &waveform_transient_11, &waveform_transient_12};
+AudioEffectEnvelope *string_transient_envelope_array[12] = {&envelope_transient_1, &envelope_transient_2, &envelope_transient_3, &envelope_transient_4, &envelope_transient_5, &envelope_transient_6, &envelope_transient_7, &envelope_transient_8, &envelope_transient_9, &envelope_transient_10, &envelope_transient_11, &envelope_transient_12};
+AudioMixer4 *transient_mixer_array[3] = {&transient_mix_1, &transient_mix_2, &transient_mix_3};
 // for the chord
 AudioEffectEnvelope *chord_vibrato_envelope_array[4] = {&voice1_vibrato_envelope, &voice2_vibrato_envelope, &voice3_vibrato_envelope, &voice4_vibrato_envelope};
 AudioEffectEnvelope *chord_vibrato_dc_envelope_array[4] = {&voice1_vibrato_dc_envelope, &voice2_vibrato_dc_envelope, &voice3_vibrato_dc_envelope, &voice4_vibrato_dc_envelope};
@@ -158,6 +187,7 @@ int8_t harp_shuffling_array[6][12] = {
     {0, 1, 2, 3, 10, 11, 12, 13, 20, 21, 22, 23}, //replaced octave by barry_harris shuffling array 
     {0, 4, 1, 5, 2, 6, 10, 14, 11, 15, 12, 16}}; //chromatic
 int8_t harp_shuffling_selection = 0;
+int8_t transient_note_level=0; //level of the note of the transient in the scale;
 int8_t chord_shuffling_array[6][7] = {
     //each number indicates the note for the voice 0-6 are taken within the chord pattern. In normal mode, only 0-3 is used, and 4-6 is available in rythm mode 
     //the /10 number indicates the octave
@@ -466,8 +496,10 @@ void set_chord_voice_frequency(uint8_t i, uint16_t current_note) {
 // setting the harp
 void set_harp_voice_frequency(uint8_t i, uint16_t current_note) {
   float note_freq =  pow(2,harp_octave_change)*c_frequency/4 * pow(2, (current_note+transpose_semitones) / 12.0);
+  float transient_freq =  64.0*c_frequency/4 *pow(2, ((current_note+transpose_semitones)%12+transient_note_level) / 12.0);
   AudioNoInterrupts();
   string_waveform_array[i]->frequency(note_freq);
+  string_transient_waveform_array[i]->frequency(transient_freq);
   string_filter_array[i]->frequency(string_filter_base_freq + note_freq * string_filter_keytrack);
   // string_vibrato_1.offset(0);
   AudioInterrupts();
@@ -476,44 +508,68 @@ void set_harp_voice_frequency(uint8_t i, uint16_t current_note) {
 uint8_t calculate_note_chord(uint8_t voice, bool slashed, bool sharp) {
   uint8_t note = 0;
   uint8_t level = chord_shuffling_array[chord_shuffling_selection][voice];
-  // only slash the selected level of the chord (note, will be ignored if >2)
+  // Only slash the selected level of the chord
   if (slashed && level % 10 == note_slash_level) {
-    if(!flat_button_modifier){
+    if (!flat_button_modifier) {
       note = (12 * int(level / 10) + float(root_button[slash_value]) + sharp * 1.0);
-    }else{
+      if (needs_octave_boost[chord_frame_shift][slash_value]) {
+        note += 12; // Add octave for slashed note
+      }
+    } else {
       note = (12 * int(level / 10) + float(root_button[slash_value]) - sharp * 1.0);
+      if (needs_octave_boost[chord_frame_shift][slash_value]) {
+        note += 12;
+      }
     }
   } else {
-    if(!flat_button_modifier){
+    if (!flat_button_modifier) {
       note = (12 * int(level / 10) + float(root_button[fundamental]) + sharp * 1.0 + float((*current_chord)[level % 10]));
-    }else{
+      if (needs_octave_boost[chord_frame_shift][fundamental]) {
+        note += 12; // Add octave for fundamental note
+      }
+    } else {
       note = (12 * int(level / 10) + float(root_button[fundamental]) - sharp * 1.0 + float((*current_chord)[level % 10]));
+      if (needs_octave_boost[chord_frame_shift][fundamental]) {
+        note += 12;
+      }
     }
   }
   return note;
 }
-// function to calculate the level of individual harp touch
+
 uint8_t calculate_note_harp(uint8_t string, bool slashed, bool sharp) {
-  if(!chromatic_harp_mode){
+  if (!chromatic_harp_mode) {
     uint8_t note = 0;
     uint8_t level = harp_shuffling_array[harp_shuffling_selection][string];
-    // only slash the selected level of the chord (note, will be ignored if >2)
+    // Only slash the selected level of the chord
     if (slashed && level % 10 == note_slash_level) {
-      if(!flat_button_modifier){
+      if (!flat_button_modifier) {
         note = (12 * int(level / 10) + float(root_button[slash_value]) + sharp * 1.0);
-      }else{
+        if (needs_octave_boost[chord_frame_shift][slash_value]) {
+          note += 12;
+        }
+      } else {
         note = (12 * int(level / 10) + float(root_button[slash_value]) - sharp * 1.0);
+        if (needs_octave_boost[chord_frame_shift][slash_value]) {
+          note += 12;
+        }
       }
     } else {
-      if(!flat_button_modifier){
+      if (!flat_button_modifier) {
         note = (12 * int(level / 10) + float(root_button[fundamental]) + sharp * 1.0 + float((*current_chord)[level % 10]));
-      }else{
+        if (needs_octave_boost[chord_frame_shift][fundamental]) {
+          note += 12;
+        }
+      } else {
         note = (12 * int(level / 10) + float(root_button[fundamental]) - sharp * 1.0 + float((*current_chord)[level % 10]));
+        if (needs_octave_boost[chord_frame_shift][fundamental]) {
+          note += 12;
+        }
       }
     }
     return note;
-  }else{
-    return string+24; //two octave up to avoid being too low
+  } else {
+    return string + 24; // Two octaves up to avoid being too low
   }
 }
 
@@ -593,48 +649,36 @@ void deserialize(String input, int16_t data_array[]) {
 }
 
 void save_config(int bank_number, bool default_save) {
-  digitalWrite(_MUTE_PIN, LOW); // muting the DAC
-  current_bank_number=bank_number; //save to correctly write in the memory 
+  digitalWrite(_MUTE_PIN, LOW); // Mute DAC
+  current_bank_number = bank_number;
   AudioNoInterrupts();
-  // myfs.quickFormat();  // performs a quick format of the created di
   myfs.remove(bank_name[bank_number]);
   File dataFile = myfs.open(bank_name[bank_number], FILE_WRITE);
-
   if (default_save) {
-    // if we need to put the default in memory
     Serial.println("Writing the default file");
-    Serial.println(bank_name[bank_number]);
     String return_data = serialize(default_bank_sysex_parameters[bank_number], parameter_size);
     dataFile.println(return_data);
   } else {
     Serial.println("Saving current settings");
-    for (u_int16_t i = 0; i < parameter_size; i++) {
-          Serial.println(current_sysex_parameters[i]);
-    }
+    current_sysex_parameters[chord_frame_shift_sysex] = chord_frame_shift; // Save frame shift
     dataFile.println(serialize(current_sysex_parameters, parameter_size));
   }
   Serial.print("Saved preset: ");
   Serial.println(dataFile.name());
   dataFile.close();
-
-  load_config(current_bank_number); //we do a full reload to initialise values
-  
-  // add something to set config_bit in the parameters to zero
+  load_config(current_bank_number); // Reload to initialize values
   AudioInterrupts();
-  digitalWrite(_MUTE_PIN, HIGH); // unmuting the DAC
+  digitalWrite(_MUTE_PIN, HIGH); // Unmute DAC
 }
 
 void load_config(int bank_number) {
-  //digitalWrite(_MUTE_PIN, LOW); // muting the DAC
-  //Turn off chords notes
   for (int i = 0; i < 4; i++) {
     chord_vibrato_envelope_array[i]->noteOff();
     chord_vibrato_dc_envelope_array[i]->noteOff();
     chord_envelope_array[i]->noteOff();
     chord_envelope_filter_array[i]->noteOff();
   }
-  trigger_chord = true; //to be ready to retrigger if needed
-
+  trigger_chord = true; // Ready to retrigger if needed
   File entry = myfs.open(bank_name[bank_number]);
   if (entry) {
     String data_string = "";
@@ -648,22 +692,23 @@ void load_config(int bank_number) {
   } else {
     entry.close();
     Serial.print("No preset, writing factory default");
-    save_config(bank_number, true); // reboot with default value
+    save_config(bank_number, true); // Reboot with default value
   }
-  // Loading the potentiometer
-  chord_pot.setup(chord_volume_sysex, 100, current_sysex_parameters[chord_pot_alternate_control], current_sysex_parameters[chord_pot_alternate_range], current_sysex_parameters,current_sysex_parameters[chord_pot_alternate_storage],apply_audio_parameter,chord_pot_alternate_storage);
-  harp_pot.setup(harp_volume_sysex, 100, current_sysex_parameters[harp_pot_alternate_control], current_sysex_parameters[harp_pot_alternate_range], current_sysex_parameters,current_sysex_parameters[harp_pot_alternate_storage],apply_audio_parameter,harp_pot_alternate_storage);
-  mod_pot.setup(current_sysex_parameters[mod_pot_main_control], current_sysex_parameters[mod_pot_main_range], current_sysex_parameters[mod_pot_alternate_control], current_sysex_parameters[mod_pot_alternate_range], current_sysex_parameters,current_sysex_parameters[mod_pot_alternate_storage],apply_audio_parameter,mod_pot_alternate_storage);
+  // Load frame shift
+  chord_frame_shift = current_sysex_parameters[chord_frame_shift_sysex] % 7; // Ensure valid range
+  // Load potentiometers and apply parameters
+  chord_pot.setup(chord_volume_sysex, 100, current_sysex_parameters[chord_pot_alternate_control], current_sysex_parameters[chord_pot_alternate_range], current_sysex_parameters, current_sysex_parameters[chord_pot_alternate_storage], apply_audio_parameter, chord_pot_alternate_storage);
+  harp_pot.setup(harp_volume_sysex, 100, current_sysex_parameters[harp_pot_alternate_control], current_sysex_parameters[harp_pot_alternate_range], current_sysex_parameters, current_sysex_parameters[harp_pot_alternate_storage], apply_audio_parameter, harp_pot_alternate_storage);
+  mod_pot.setup(current_sysex_parameters[mod_pot_main_control], current_sysex_parameters[mod_pot_main_range], current_sysex_parameters[mod_pot_alternate_control], current_sysex_parameters[mod_pot_alternate_range], current_sysex_parameters, current_sysex_parameters[mod_pot_alternate_storage], apply_audio_parameter, mod_pot_alternate_storage);
   Serial.println("pot setup done");
   for (int i = 1; i < parameter_size; i++) {
     apply_audio_parameter(i, current_sysex_parameters[i]);
   }
-  control_command(0, 0); // tell itself to update the remote controller if present
+  control_command(0, 0); // Update remote controller if present
   chord_pot.force_update();
   harp_pot.force_update();
   mod_pot.force_update();
-  flag_save_needed=false;
-  //digitalWrite(_MUTE_PIN, HIGH); // unmuting the DAC
+  flag_save_needed = false;
 }
 
 void setup() {
@@ -689,6 +734,10 @@ void setup() {
     string_mixer_array[i]->gain(1, 1);
     string_mixer_array[i]->gain(2, 1);
     string_mixer_array[i]->gain(3, 1);
+    transient_mixer_array[i]->gain(0, 1);
+    transient_mixer_array[i]->gain(1, 1);
+    transient_mixer_array[i]->gain(2, 1);
+    transient_mixer_array[i]->gain(3, 1);
   }
   for (int i = 0; i < 4; i++) {
     chord_voice_mixer_array[i]->gain(0, 1);
@@ -698,7 +747,14 @@ void setup() {
     chord_vibrato_mixer_array[i]->gain(0,0.5);
     chord_vibrato_mixer_array[i]->gain(1,0.5);
     chord_vibrato_dc_envelope_array[i]->sustain(0); //for the pitch bend no need for sustain
+    transient_full_mix.gain(i, 1);
+    all_string_mix.gain(i, 1);
   }
+  for(int i=0;i<12;i++){
+    string_transient_envelope_array[i]->sustain(0);//don't need sustain for the transient
+  }
+  all_string_mix.gain(3,0.005); //for the transient
+
   // initialising the rest of the hardware
   chord_matrix.setup();
   harp_sensor.setup();
@@ -1032,6 +1088,7 @@ void loop() {
       envelope_string_vibrato_dc.noteOn();
       string_enveloppe_filter_array[i]->noteOn();
       string_enveloppe_array[i]->noteOn();
+      string_transient_envelope_array[i]->noteOn();
       AudioInterrupts();
       if(harp_started_notes[i]!=0){
         usbMIDI.sendNoteOff(harp_started_notes[i],harp_release_velocity,1,harp_port);
@@ -1045,6 +1102,7 @@ void loop() {
     if (value == 1) {
       AudioNoInterrupts();
       string_enveloppe_array[i]->noteOff();
+      string_transient_envelope_array[i]->noteOff();
       string_enveloppe_filter_array[i]->noteOff();
       AudioInterrupts();
       if(harp_started_notes[i]!=0){

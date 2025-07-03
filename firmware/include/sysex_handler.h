@@ -1,3 +1,26 @@
+#define SYSEX_HANDLER_H
+
+#include <Arduino.h>
+#include <Audio.h>
+
+// Prototypes for functions defined in main.cpp
+void set_harp_voice_frequency(uint8_t i, uint16_t current_note);
+void set_chord_voice_frequency(uint8_t i, uint16_t current_note);
+uint8_t calculate_note_harp(uint8_t string, bool slashed, bool sharp);
+uint8_t calculate_note_chord(uint8_t voice, bool slashed, bool sharp);
+
+// Extern declarations for variables in main.cpp
+extern uint8_t chord_frame_shift;
+extern uint8_t current_harp_notes[12];
+extern uint8_t current_chord_notes[7];
+extern int8_t current_line;
+extern bool slash_chord;
+extern bool sharp_active;
+extern bool rythm_mode;
+extern bool change_held_strings;
+extern AudioEffectEnvelope* string_enveloppe_array[12];
+extern bool flag_save_needed;
+
 void apply_audio_parameter(int adress, int value) {
     switch(adress){
       case 20:
@@ -66,6 +89,31 @@ void apply_audio_parameter(int adress, int value) {
       case 17:
         mod_pot.set_alternate_range(value);
         break;
+        case 18:
+            chord_frame_shift = value % 7; // Ensure valid range (0–6 for C, D, E, F, G, A, B)
+            transpose_semitones = 0; // Reset transpose
+            midi_base_note_transposed = midi_base_note + transpose_semitones;
+            // Recalculate harp notes
+            for (int i = 0; i < 12; i++) {
+                current_harp_notes[i] = calculate_note_harp(i, slash_chord, sharp_active);
+                if (change_held_strings && string_enveloppe_array[i]->isSustain()) {
+                    set_harp_voice_frequency(i, current_harp_notes[i]); //
+                }
+            }
+            // If a chord is active, update chord notes
+            if (current_line >= 0) {
+                for (int i = 0; i < 7; i++) {
+                    current_chord_notes[i] = calculate_note_chord(i, slash_chord, sharp_active);
+                }
+                if (!rythm_mode) {
+                    for (int i = 0; i < 4; i++) {
+                        set_chord_voice_frequency(i, current_chord_notes[i]);
+                    }
+                }
+            }
+            flag_save_needed = true; // Mark for saving
+            Serial.println("Frame shift set to: " + String(chord_frame_shift));
+            break;
       case 4:
         chord_pot.set_alternate_default(value);chord_pot.force_update();
         break;
@@ -179,6 +227,34 @@ void apply_audio_parameter(int adress, int value) {
         for (int i=0;i<12;i++){
           string_filter_array[i]->octaveControl(value/100.0);
         }
+        break;
+      case 100:
+        for (int i=0;i<12;i++){
+          string_transient_waveform_array[i]->begin(value);
+        }
+        break;
+      case 101:
+        for (int i=0;i<12;i++){
+          string_transient_waveform_array[i]->amplitude(value/100.0);
+        }
+        break;
+      case 102:
+        for (int i=0;i<12;i++){
+          string_transient_envelope_array[i]->attack(value);
+        }
+        break;
+      case 103:
+        for (int i=0;i<12;i++){
+          string_transient_envelope_array[i]->hold(value);
+        }
+        break;
+      case 104:
+        for (int i=0;i<12;i++){
+          string_transient_envelope_array[i]->decay(value);string_transient_envelope_array[i]->release(value);
+        }
+        break;
+      case 105:
+        transient_note_level=value;
         break;
       case 59:
         string_tremolo_lfo.begin(value);
