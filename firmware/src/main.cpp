@@ -46,16 +46,6 @@ uint8_t dim[7] = {0, 3, 6, 12, 2, 5, 9};
 uint8_t full_dim[7] = {0, 3, 6, 9, 2, 5, 12};
 uint8_t root_button[7] = {11, 4, 9, 2, 7, 0, 5}; // defines the fundamental of each row in the circle of fifth, ie F,C,G,D,A,E,B from left to right
 
-// Define which buttons need +12 semitones for each frame shift
-/* bool needs_octave_boost[7][7] = {
-  {false, false, false, false, false, false, false}, // Shift 0 (C): F4, C4, G4, D4, A4, E4, B4
-  {false, true,  false, false, false, false, false}, // Shift 1 (D): F4, C5, G4, D4, A4, E4, B4
-  {false, true,  false, true,  false, false, false}, // Shift 2 (E): F4, C5, G4, D5, A4, E4, B4
-  {false, true,  false, true,  false, false, true},  // Shift 3 (F): F4, C5, G4, D5, A4, E4, B5
-  {false, true,  false, true,  true,  false, true},  // Shift 4 (G): F4, C5, G4, D5, A5, E4, B5
-  {false, true,  true,  true,  true,  false, true},  // Shift 5 (A): F4, C5, G5, D5, A5, E4, B5
-  {false, true,  true,  true,  true,  true,  true}   // Shift 6 (B): F4, C5, G5, D5, A5, E5, B5
-}; */
 
 bool needs_octave_boost[7][7] = {
   {false, false, false, false, false, false, false}, // Shift 0: B4, E4, A4, D4, G4, C4, F4
