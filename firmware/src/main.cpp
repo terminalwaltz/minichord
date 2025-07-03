@@ -12,7 +12,7 @@
 #include <potentiometer.h>
 
 //>>SOFWTARE VERSION 
-int version_ID=0004; //to be read 00.03, stored at adress 7 in memory
+int version_ID=0005; //to be read 00.03, stored at adress 7 in memory
 //>>BUTTON ARRAYS<<
 debouncer harp_array[12];
 debouncer chord_matrix_array[22];
@@ -138,6 +138,9 @@ AudioEffectEnvelope *string_enveloppe_array[12] = {&envelope_string_1, &envelope
 AudioEffectEnvelope *string_enveloppe_filter_array[12] = {&envelope_filter_1, &envelope_filter_2, &envelope_filter_3, &envelope_filter_4, &envelope_filter_5, &envelope_filter_6, &envelope_filter_7, &envelope_filter_8, &envelope_filter_9, &envelope_filter_10, &envelope_filter_11, &envelope_filter_12};
 AudioMixer4 *string_mixer_array[3] = {&string_mix_1, &string_mix_2, &string_mix_3};
 AudioFilterStateVariable *string_filter_array[12] = {&filter_string_1, &filter_string_2, &filter_string_3, &filter_string_4, &filter_string_5, &filter_string_6, &filter_string_7, &filter_string_8, &filter_string_9, &filter_string_10, &filter_string_11, &filter_string_12};
+AudioSynthWaveform *string_transient_waveform_array[12] = {&waveform_transient_1, &waveform_transient_2, &waveform_transient_3, &waveform_transient_4, &waveform_transient_5, &waveform_transient_6, &waveform_transient_7, &waveform_transient_8, &waveform_transient_9, &waveform_transient_10, &waveform_transient_11, &waveform_transient_12};
+AudioEffectEnvelope *string_transient_envelope_array[12] = {&envelope_transient_1, &envelope_transient_2, &envelope_transient_3, &envelope_transient_4, &envelope_transient_5, &envelope_transient_6, &envelope_transient_7, &envelope_transient_8, &envelope_transient_9, &envelope_transient_10, &envelope_transient_11, &envelope_transient_12};
+AudioMixer4 *transient_mixer_array[3] = {&transient_mix_1, &transient_mix_2, &transient_mix_3};
 // for the chord
 AudioEffectEnvelope *chord_vibrato_envelope_array[4] = {&voice1_vibrato_envelope, &voice2_vibrato_envelope, &voice3_vibrato_envelope, &voice4_vibrato_envelope};
 AudioEffectEnvelope *chord_vibrato_dc_envelope_array[4] = {&voice1_vibrato_dc_envelope, &voice2_vibrato_dc_envelope, &voice3_vibrato_dc_envelope, &voice4_vibrato_dc_envelope};
@@ -156,6 +159,21 @@ AudioEffectEnvelope *chord_envelope_array[4] = {&voice1_envelope, &voice2_envelo
 // waveshaper shape
 float wave_shape[257] = {};
 float ws_sin_param = 1;
+// waveform array 
+int8_t waveform_array[12] = {
+    0, //WAVEFORM_SINE
+    1, //WAVEFORM_SAWTOOTH
+    2, //WAVEFORM_SQUARE
+    3, //WAVEFORM_TRIANGLE
+    12, //WAVEFORM_BANDLIMIT_PULSE
+    5, //WAVEFORM_PULSE
+    6, //WAVEFORM_SAWTOOTH_REVERSE
+    7, //WAVEFORM_SAMPLE_HOLD 
+    8, //WAVEFORM_TRIANGLE_VARIABLE
+    9, //WAVEFORM_BANDLIMIT_SAWTOOTH
+    10,//WAVEFORM_BANDLIMIT_SAWTOOTH_REVERSE
+    11, //WAVEFORM_BANDLIMIT_SQUARE
+}; 
 // shuffling arrays and index for the harp
 int8_t harp_shuffling_array[6][12] = {
     //each number indicates the note for the string 0-6 are taken within the chord pattern. 
@@ -167,6 +185,7 @@ int8_t harp_shuffling_array[6][12] = {
     {0, 1, 2, 3, 10, 11, 12, 13, 20, 21, 22, 23}, //replaced octave by barry_harris shuffling array 
     {0, 4, 1, 5, 2, 6, 10, 14, 11, 15, 12, 16}}; //chromatic
 int8_t harp_shuffling_selection = 0;
+int8_t transient_note_level=0; //level of the note of the transient in the scale;
 int8_t chord_shuffling_array[6][7] = {
     //each number indicates the note for the voice 0-6 are taken within the chord pattern. In normal mode, only 0-3 is used, and 4-6 is available in rythm mode 
     //the /10 number indicates the octave
@@ -475,8 +494,10 @@ void set_chord_voice_frequency(uint8_t i, uint16_t current_note) {
 // setting the harp
 void set_harp_voice_frequency(uint8_t i, uint16_t current_note) {
   float note_freq =  pow(2,harp_octave_change)*c_frequency/4 * pow(2, (current_note+transpose_semitones) / 12.0);
+  float transient_freq =  64.0*c_frequency/4 *pow(2, ((current_note+transpose_semitones)%12+transient_note_level) / 12.0);
   AudioNoInterrupts();
   string_waveform_array[i]->frequency(note_freq);
+  string_transient_waveform_array[i]->frequency(transient_freq);
   string_filter_array[i]->frequency(string_filter_base_freq + note_freq * string_filter_keytrack);
   // string_vibrato_1.offset(0);
   AudioInterrupts();
@@ -698,6 +719,10 @@ void setup() {
     string_mixer_array[i]->gain(1, 1);
     string_mixer_array[i]->gain(2, 1);
     string_mixer_array[i]->gain(3, 1);
+    transient_mixer_array[i]->gain(0, 1);
+    transient_mixer_array[i]->gain(1, 1);
+    transient_mixer_array[i]->gain(2, 1);
+    transient_mixer_array[i]->gain(3, 1);
   }
   for (int i = 0; i < 4; i++) {
     chord_voice_mixer_array[i]->gain(0, 1);
@@ -707,7 +732,14 @@ void setup() {
     chord_vibrato_mixer_array[i]->gain(0,0.5);
     chord_vibrato_mixer_array[i]->gain(1,0.5);
     chord_vibrato_dc_envelope_array[i]->sustain(0); //for the pitch bend no need for sustain
+    transient_full_mix.gain(i, 1);
+    all_string_mix.gain(i, 1);
   }
+  for(int i=0;i<12;i++){
+    string_transient_envelope_array[i]->sustain(0);//don't need sustain for the transient
+  }
+  all_string_mix.gain(3,0.02); //for the transient
+
   // initialising the rest of the hardware
   chord_matrix.setup();
   harp_sensor.setup();
@@ -1101,6 +1133,7 @@ int sharp_transition = chord_matrix_array[0].read_transition(); // first the sha
       envelope_string_vibrato_dc.noteOn();
       string_enveloppe_filter_array[i]->noteOn();
       string_enveloppe_array[i]->noteOn();
+      string_transient_envelope_array[i]->noteOn();
       AudioInterrupts();
       if(harp_started_notes[i]!=0){
         usbMIDI.sendNoteOff(harp_started_notes[i],harp_release_velocity,1,harp_port);
@@ -1115,6 +1148,7 @@ int sharp_transition = chord_matrix_array[0].read_transition(); // first the sha
     if (value == 1) {
       AudioNoInterrupts();
       string_enveloppe_array[i]->noteOff();
+      string_transient_envelope_array[i]->noteOff();
       string_enveloppe_filter_array[i]->noteOff();
       AudioInterrupts();
       if(harp_started_notes[i]!=0){
