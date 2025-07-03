@@ -9,6 +9,8 @@ To be informed about the project, please subscribe to [the newsletter](https://b
 * [#1 project update](https://buttondown.com/BenjaminPoilve/archive/minichord-update-1/) 
 * [#2 project update](https://buttondown.com/BenjaminPoilve/archive/minichord-update-2/) 
 * [#3 project update and pre-order link](https://buttondown.com/BenjaminPoilve/archive/minichord-update-3/) 
+* [#4 project update](https://buttondown.com/BenjaminPoilve/archive/minichord-update-4/) 
+* [#5 project update](https://buttondown.com/BenjaminPoilve/archive/minichord-update-5/) 
 
 
 ## Documentation 
