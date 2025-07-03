@@ -42,7 +42,9 @@ with open('parameters.json') as f: # Reserved adresses: 0 for system command and
                         with a.div(id='status_zone', klass="unconnected"):
                             a.span(_t='●',id='dot')
                             a.span(_t='',id='status_value')
-                      
+                        with a.div():
+                            a('To test and load user-submitted presets, visit the ')
+                            a.a(href='./minishop.html', _t='minishop.')
                         with a.div(klass="line"):
                             a.h5(_t='saving:',klass="inactive")
                         with a.div(klass="line"):
