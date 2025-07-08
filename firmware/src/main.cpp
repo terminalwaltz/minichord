@@ -166,7 +166,7 @@ int8_t waveform_array[12] = {
     11, //WAVEFORM_BANDLIMIT_SQUARE
 }; 
 // shuffling arrays and index for the harp
-int8_t harp_shuffling_array[6][12] = {
+int8_t harp_shuffling_array[7][12] = {
     //each number indicates the note for the string 0-6 are taken within the chord pattern. 
     //the /10 number indicates the octave
     {0, 1, 2, 10, 11, 12, 20, 21, 22, 30, 31, 32},
@@ -174,7 +174,8 @@ int8_t harp_shuffling_array[6][12] = {
     {5, 2, 0, 1, 15, 12, 10, 11, 25, 22, 20, 21}, //add the fourth
     {6, 2, 0, 1, 16, 12, 10, 11, 26, 22, 20, 21}, //add the sixth
     {0, 1, 2, 3, 10, 11, 12, 13, 20, 21, 22, 23}, //replaced octave by barry_harris shuffling array 
-    {0, 4, 1, 5, 2, 6, 10, 14, 11, 15, 12, 16}}; //chromatic
+    {0, 4, 1, 5, 2, 6, 10, 14, 11, 15, 12, 16}, //chromatic
+    {0, 10, 20, 1, 11, 21, 2, 12, 22, 3, 13, 23}}; //special array for keymaster/barry_harris combo
 int8_t harp_shuffling_selection = 0;
 int8_t transient_note_level=0; //level of the note of the transient in the scale;
 int8_t chord_shuffling_array[6][7] = {
