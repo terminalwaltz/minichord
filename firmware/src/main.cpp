@@ -12,7 +12,7 @@
 #include <potentiometer.h>
 
 //>>SOFWTARE VERSION 
-int version_ID=0005; //to be read 00.03, stored at adress 7 in memory
+int version_ID=0006; //to be read 00.03, stored at adress 7 in memory
 //>>BUTTON ARRAYS<<
 debouncer harp_array[12];
 debouncer chord_matrix_array[22];
@@ -44,11 +44,19 @@ uint8_t min_seventh[7] = {0, 3, 10, 7, 1, 5, 8};
 uint8_t aug[7] = {0, 4, 8, 12, 2, 5, 9};
 uint8_t dim[7] = {0, 3, 6, 12, 2, 5, 9};
 uint8_t full_dim[7] = {0, 3, 6, 9, 2, 5, 12};
-uint8_t root_button[7] = {11, 4, 9, 2, 7, 0, 5}; // defines the fundamental of each row in the circle of fifth, ie F,C,G,D,A,E,B from left to right
+int8_t root_button[7][7] = {
+    {11, 4, 9, 2, 7, 0, 5},    // Shift 0: B4, E4, A4, D4, G4, C4, F4
+    {11, 4, 9, 2, 7, 12, 5},   // Shift 1: B4, E4, A4, D4, G4, C5, F4
+    {11, 4, 9, 14, 7, 12, 5},  // Shift 2: B4, E4, A4, D5, G4, C5, F4
+    {11, 16, 9, 14, 7, 12, 5}, // Shift 3: B4, E5, A4, D5, G4, C5, F4
+    {11, 16, 9, 14, 7, 12, 17},// Shift 4: B4, E5, A4, D5, G4, C5, F5
+    {11, 16, 9, 14, 19, 12, 17},// Shift 5: B4, E5, A4, D5, G5, C5, F5
+    {11, 16, 21, 14, 19, 12, 17} // Shift 6: B4, E5, A5, D5, G5, C5, F5
+};
 float c_frequency = 130.81;                      // for C3
 uint8_t chord_octave_change=4;
 uint8_t harp_octave_change=4;
-
+uint8_t chord_frame_shift=0;
 uint8_t transpose_semitones=0;                       // to use to transpose the instrument, number of semitones
 uint8_t (*current_chord)[7] = &major;            // the array holding the current chord
 uint8_t current_chord_notes[7];                  // the array for the note calculation within the chord, calculate 7 of them for the arpeggiator mode
@@ -107,7 +115,7 @@ int8_t chord_pot_alternate_storage = 4;
 int8_t harp_pot_alternate_storage = 5;
 int8_t mod_pot_alternate_storage = 6;
 
-// >10 and <20 are limited access, for example the potentiometer settings (we don't want a pot to control another pot sysex adress or range)
+// >10 and <21 are limited access, for example the potentiometer settings (we don't want a pot to control another pot sysex adress or range)
 int8_t chord_pot_alternate_control = 10;
 int8_t chord_pot_alternate_range = 11;
 int8_t harp_pot_alternate_control = 12;
@@ -116,7 +124,7 @@ int8_t mod_pot_main_control = 14;
 int8_t mod_pot_main_range = 15;
 int8_t mod_pot_alternate_control = 16;
 int8_t mod_pot_alternate_range = 17;
-// 20-39 are global parameters (switching logic, global reverb etc.)
+// 21-39 are global parameters (switching logic, global reverb etc.)
 // 40-119 are harp parameters
 // 120-219 are chord parameters
 // 220-235 are rythm patterns
@@ -496,49 +504,48 @@ void set_harp_voice_frequency(uint8_t i, uint16_t current_note) {
 }
 // function to calculate the frequency of individual chord notes
 uint8_t calculate_note_chord(uint8_t voice, bool slashed, bool sharp) {
-  uint8_t note = 0;
-  uint8_t level = chord_shuffling_array[chord_shuffling_selection][voice];
-  // only slash the selected level of the chord (note, will be ignored if >2)
-  if (slashed && level % 10 == note_slash_level) {
-    if(!flat_button_modifier){
-      note = (12 * int(level / 10) + float(root_button[slash_value]) + sharp * 1.0);
-    }else{
-      note = (12 * int(level / 10) + float(root_button[slash_value]) - sharp * 1.0);
+    uint8_t note = 0;
+    uint8_t level = chord_shuffling_array[chord_shuffling_selection][voice];
+    // Only slash the selected level of the chord
+    if (slashed && level % 10 == note_slash_level) {
+        if (!flat_button_modifier) {
+            note = (12 * int(level / 10) + root_button[chord_frame_shift][slash_value] + sharp * 1.0);
+        } else {
+            note = (12 * int(level / 10) + root_button[chord_frame_shift][slash_value] - sharp * 1.0);
+        }
+    } else {
+        if (!flat_button_modifier) {
+            note = (12 * int(level / 10) + root_button[chord_frame_shift][fundamental] + sharp * 1.0 + (*current_chord)[level % 10]);
+        } else {
+            note = (12 * int(level / 10) + root_button[chord_frame_shift][fundamental] - sharp * 1.0 + (*current_chord)[level % 10]);
+        }
     }
-  } else {
-    if(!flat_button_modifier){
-      note = (12 * int(level / 10) + float(root_button[fundamental]) + sharp * 1.0 + float((*current_chord)[level % 10]));
-    }else{
-      note = (12 * int(level / 10) + float(root_button[fundamental]) - sharp * 1.0 + float((*current_chord)[level % 10]));
-    }
-  }
-  return note;
+    return note;
 }
 // function to calculate the level of individual harp touch
 uint8_t calculate_note_harp(uint8_t string, bool slashed, bool sharp) {
-  if(!chromatic_harp_mode){
-    uint8_t note = 0;
-    uint8_t level = harp_shuffling_array[harp_shuffling_selection][string];
-    // only slash the selected level of the chord (note, will be ignored if >2)
-    if (slashed && level % 10 == note_slash_level) {
-      if(!flat_button_modifier){
-        note = (12 * int(level / 10) + float(root_button[slash_value]) + sharp * 1.0);
-      }else{
-        note = (12 * int(level / 10) + float(root_button[slash_value]) - sharp * 1.0);
-      }
+    if (!chromatic_harp_mode) {
+        uint8_t note = 0;
+        uint8_t level = harp_shuffling_array[harp_shuffling_selection][string];
+        // Only slash the selected level of the chord
+        if (slashed && level % 10 == note_slash_level) {
+            if (!flat_button_modifier) {
+                note = (12 * int(level / 10) + root_button[chord_frame_shift][slash_value] + sharp * 1.0);
+            } else {
+                note = (12 * int(level / 10) + root_button[chord_frame_shift][slash_value] - sharp * 1.0);
+            }
+        } else {
+            if (!flat_button_modifier) {
+                note = (12 * int(level / 10) + root_button[chord_frame_shift][fundamental] + sharp * 1.0 + (*current_chord)[level % 10]);
+            } else {
+                note = (12 * int(level / 10) + root_button[chord_frame_shift][fundamental] - sharp * 1.0 + (*current_chord)[level % 10]);
+            }
+        }
+        return note;
     } else {
-      if(!flat_button_modifier){
-        note = (12 * int(level / 10) + float(root_button[fundamental]) + sharp * 1.0 + float((*current_chord)[level % 10]));
-      }else{
-        note = (12 * int(level / 10) + float(root_button[fundamental]) - sharp * 1.0 + float((*current_chord)[level % 10]));
-      }
+        return string + 24; // Two octaves up to avoid being too low
     }
-    return note;
-  }else{
-    return string+24; //two octave up to avoid being too low
-  }
 }
-
 //-->>RYTHM MODE UTILITIES
 void rythm_tick_function() {
   //this function seems a bit long for a timed one. Maybe try to offload some logic somewhere else? 

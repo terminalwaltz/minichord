@@ -24,6 +24,10 @@ void apply_audio_parameter(int adress, int value) {
       case 33:
         barry_harris_mode=value;
         break;
+      case 34:
+        chord_frame_shift=value;
+        Serial.println("chord frame shift set to "+String(chord_frame_shift));
+        break;
       case 24:
         main_reverb.size(value/100.0);
         break;
