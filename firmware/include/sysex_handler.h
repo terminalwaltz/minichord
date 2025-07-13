@@ -28,7 +28,7 @@ void apply_audio_parameter(int adress, int value) {
         chord_frame_shift=value;
         break;
       case 35:
-        key_center_selection=value;
+        key_signature_selection=value;
         break;
       case 24:
         main_reverb.size(value/100.0);
