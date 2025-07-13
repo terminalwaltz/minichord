@@ -374,3 +374,220 @@ function initializeSliderHoverEffects() {
 
 // Initialize hover effects when the page loads
 document.addEventListener('DOMContentLoaded', initializeSliderHoverEffects);
+
+//-->>RANDOM PRESET GENERATOR
+// Function to fetch and parse parameters.json
+async function loadParameterRanges() {
+  try {
+    const response = await fetch('./json/parameters.json');
+    const parametersData = await response.json();
+    
+    const parameterRanges = {};
+    
+    // Process all parameter categories
+    ['global_parameter', 'harp_parameter', 'chord_parameter'].forEach(category => {
+      parametersData[category].forEach(param => {
+        parameterRanges[param.sysex_adress] = {
+          min: param.min_value,
+          max: param.max_value,
+          type: param.data_type,
+          default: param.default_value
+        };
+      });
+    });
+    
+    return parameterRanges;
+  } catch (error) {
+    console.error('Error loading parameter ranges:', error);
+    return {};
+  }
+}
+
+// Generate random preset function
+// This is based on TerminalWaltz's code. Provided under GNU General Public License v3.0
+// License available here : https://github.com/terminalwaltz/minichord-random-generator/blob/main/LICENSE 
+async function generateRandomPreset() {
+  if (!miniChordController.isConnected()) {
+    document.getElementById("information_zone").focus();
+    return;
+  }
+  
+  const parameterRanges = await loadParameterRanges();
+  
+  // Fixed values for indices 0-9 (from Python preset)
+  const fixedValues = {
+    0: 0,
+    1: 0,
+    2: 50,    // Harp global gain
+    3: 50,    // Chord global gain
+    4: 512,   // Chord alternate value
+    5: 512,   // Harp alternate value
+    6: 512,   // Mod alternate value
+    7: 0,     // Firmware revision
+    8: 0,
+    9: 0
+  };
+  
+  // Initialize preset array
+  const preset = Array(miniChordController.parameter_size).fill(0);
+  
+  // Set fixed values
+  Object.entries(fixedValues).forEach(([index, value]) => {
+    preset[parseInt(index)] = value;
+  });
+  
+  // Define parameter groups for musical constraints
+  const oscillatorAmplitudes = [41, 121, 124, 127];
+  const outputAmplifiers = [97, 197];
+  const resonanceParams = [51, 79, 89, 145, 178, 193];
+  const envelopeTimes = [43, 44, 47, 52, 53, 54, 56, 65, 66, 67, 69, 72, 73, 74, 77, 78,
+                        137, 138, 141, 146, 147, 150, 164, 165, 166, 168, 171, 172, 173];
+  const envelopeSustains = [46, 140, 149];
+  const volumeParams = [2, 3];
+  const noiseAmplitude = [130];
+  const transientAmplitude = [42];
+  const rhythmPatterns = Array.from({length: 16}, (_, i) => 220 + i);
+  const harpFilterMix = [90, 91, 92];
+  const chordFilterMix = [194, 195, 196];
+  const chordNoteAmplitudes = [131, 132, 133, 134];
+  const chordFreqMultipliers = [123, 126, 129];
+  const reverbParams = [25, 26, 27, 28];
+  const effectsMix = [83, 182, 183];
+  
+  // Ensure volumes are audible
+  volumeParams.forEach(index => {
+    preset[index] = Math.floor(Math.random() * (75 - 50 + 1)) + 50;
+  });
+  
+  // Ensure harp oscillator and transient are audible
+  preset[41] = Math.floor(Math.random() * (70 - 30 + 1)) + 30;
+  preset[42] = Math.floor(Math.random() * 12);
+  
+  // Ensure at least one chord oscillator or noise is audible
+  const chordSoundSources = [121, 124, 127, 130];
+  const chosenChordSource = chordSoundSources[Math.floor(Math.random() * chordSoundSources.length)];
+  preset[chosenChordSource] = Math.floor(Math.random() * (100 - 50 + 1)) + 50;
+  
+  // Set remaining chord oscillators and noise
+  chordSoundSources.forEach(index => {
+    if (index !== chosenChordSource) {
+      preset[index] = Math.floor(Math.random() * 51);
+    }
+  });
+  
+  // Ensure output amplifiers are non-zero
+  preset[97] = Math.floor(Math.random() * (100 - 80 + 1)) + 80;
+  preset[197] = Math.floor(Math.random() * (80 - 50 + 1)) + 50;
+  
+  // Ensure effects mix are non-zero
+  effectsMix.forEach(index => {
+    preset[index] = Math.floor(Math.random() * (100 - 50 + 1)) + 50;
+  });
+  
+  // Ensure at least one harp filter mix is non-zero
+  const chosenHarpFilter = harpFilterMix[Math.floor(Math.random() * harpFilterMix.length)];
+  preset[chosenHarpFilter] = Math.floor(Math.random() * (100 - 50 + 1)) + 50;
+  harpFilterMix.forEach(index => {
+    if (index !== chosenHarpFilter) {
+      preset[index] = Math.floor(Math.random() * 51);
+    }
+  });
+  
+  // Ensure at least one chord filter mix is non-zero
+  const chosenChordFilter = chordFilterMix[Math.floor(Math.random() * chordFilterMix.length)];
+  preset[chosenChordFilter] = Math.floor(Math.random() * (100 - 50 + 1)) + 50;
+  chordFilterMix.forEach(index => {
+    if (index !== chosenChordFilter) {
+      preset[index] = Math.floor(Math.random() * 51);
+    }
+  });
+  
+  // Ensure chord note amplitudes are non-zero
+  chordNoteAmplitudes.forEach(index => {
+    preset[index] = Math.floor(Math.random() * (100 - 50 + 1)) + 50;
+  });
+  
+  // Ensure chord frequency multipliers are musical
+  chordFreqMultipliers.forEach(index => {
+    preset[index] = Math.floor(Math.random() * (150 - 100 + 1)) + 100;
+  });
+  
+  // Ensure sustain levels are non-zero
+  envelopeSustains.forEach(index => {
+    preset[index] = Math.round((Math.random() * (1.0 - 0.8) + 0.8) * 100) / 100;
+  });
+  
+  // Ensure reverb parameters are non-zero
+  reverbParams.forEach(index => {
+    preset[index] = Math.round((Math.random() * (0.6 - 0.2) + 0.2) * 100) / 100;
+  });
+  
+  // Ensure at least one rhythm pattern is non-zero
+  const chosenRhythm = rhythmPatterns[Math.floor(Math.random() * rhythmPatterns.length)];
+  preset[chosenRhythm] = Math.floor(Math.random() * 65) + 1;
+  
+  // Generate random values for remaining parameters
+  Object.entries(parameterRanges).forEach(([index, params]) => {
+    const idx = parseInt(index);
+    
+    // Skip if already set
+    if (fixedValues.hasOwnProperty(idx) || 
+        volumeParams.includes(idx) || 
+        envelopeSustains.includes(idx) || 
+        transientAmplitude.includes(idx) || 
+        oscillatorAmplitudes.includes(idx) || 
+        noiseAmplitude.includes(idx) || 
+        outputAmplifiers.includes(idx) || 
+        harpFilterMix.includes(idx) || 
+        chordFilterMix.includes(idx) || 
+        chordNoteAmplitudes.includes(idx) || 
+        chordFreqMultipliers.includes(idx) || 
+        effectsMix.includes(idx) || 
+        reverbParams.includes(idx)) {
+      return;
+    }
+    
+    const minVal = params.min;
+    const maxVal = params.max;
+    const dataType = params.type;
+    
+    if (resonanceParams.includes(idx)) {
+      // Limit resonance to avoid harshness
+      preset[idx] = Math.round((Math.random() * (Math.min(3.0, maxVal) - minVal) + minVal) * 100) / 100;
+    } else if (envelopeTimes.includes(idx)) {
+      // Bias envelope times to shorter, musical values
+      preset[idx] = Math.floor(Math.random() * (Math.min(1500, maxVal) - minVal + 1)) + minVal;
+    } else if (rhythmPatterns.includes(idx)) {
+      // Random rhythm values (one non-zero already ensured)
+      preset[idx] = Math.floor(Math.random() * 66);
+    } else {
+      // Use original ranges for other parameters
+      if (dataType === "int") {
+        preset[idx] = Math.floor(Math.random() * (maxVal - minVal + 1)) + minVal;
+      } else { // float
+        preset[idx] = Math.round((Math.random() * (maxVal - minVal) + minVal) * 100) / 100;
+      }
+    }
+  });
+  
+  // Send the preset to the device
+  for (let i = 2; i < miniChordController.parameter_size; i++) {
+    if (preset[i] !== undefined) {
+      let valueToSend = preset[i];      
+      miniChordController.sendParameter(i, valueToSend);
+    }
+  }
+  
+  // Update the interface
+  miniChordController.sendParameter(0, 0);
+  
+  console.log("Random preset generated and applied!");
+}
+
+// Add event listener to the randomise button
+document.addEventListener('DOMContentLoaded', function() {
+  const randomiseBtn = document.getElementById('randomise_btn');
+  if (randomiseBtn) {
+    randomiseBtn.addEventListener('click', generateRandomPreset);
+  }
+});
