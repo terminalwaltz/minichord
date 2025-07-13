@@ -44,7 +44,14 @@ uint8_t min_seventh[7] = {0, 3, 10, 7, 1, 5, 8};
 uint8_t aug[7] = {0, 4, 8, 12, 2, 5, 9};
 uint8_t dim[7] = {0, 3, 6, 12, 2, 5, 9};
 uint8_t full_dim[7] = {0, 3, 6, 9, 2, 5, 12};
-int8_t root_button[7][7] = {
+uint8_t key_center_selection = 0; // 0=C, 1=G, 2=D, 3=A, 4=E, 5=B, 6=F, 7=Bb, 8=Eb, 9=Ab, 10=Db, 11=Gb
+// Key-specific root button mappings: [key][shift][button]
+// Keys: C, G, D, A, E, B, F, Bb, Eb, Ab, Db, Gb
+// Buttons: F, C, G, D, A, E, B (fixed letter names)
+// MIDI notes relative to C4 (60), with +12 per octave shift
+int8_t root_button_keys[12][7][7] = {
+  // Key of C: F, C, G, D, A, E, B (no sharps/flats)
+  {
     {11, 4, 9, 2, 7, 0, 5},    // Shift 0: B4, E4, A4, D4, G4, C4, F4
     {11, 4, 9, 2, 7, 12, 5},   // Shift 1: B4, E4, A4, D4, G4, C5, F4
     {11, 4, 9, 14, 7, 12, 5},  // Shift 2: B4, E4, A4, D5, G4, C5, F4
@@ -52,6 +59,117 @@ int8_t root_button[7][7] = {
     {11, 16, 9, 14, 7, 12, 17},// Shift 4: B4, E5, A4, D5, G4, C5, F5
     {11, 16, 9, 14, 19, 12, 17},// Shift 5: B4, E5, A4, D5, G5, C5, F5
     {11, 16, 21, 14, 19, 12, 17} // Shift 6: B4, E5, A5, D5, G5, C5, F5
+  },
+  // Key of G: F#, C, G, D, A, E, B (1 sharp)
+  {
+    {11, 4, 9, 2, 7, 0, 6},    // Shift 0: B4, E4, A4, D4, G4, C4, F#4
+    {11, 4, 9, 2, 7, 12, 6},   // Shift 1: B4, E4, A4, D4, G4, C5, F#4
+    {11, 4, 9, 14, 7, 12, 6},  // Shift 2: B4, E4, A4, D5, G4, C5, F#4
+    {11, 16, 9, 14, 7, 12, 6}, // Shift 3: B4, E5, A4, D5, G4, C5, F#4
+    {11, 16, 9, 14, 7, 12, 18},// Shift 4: B4, E5, A4, D5, G4, C5, F#5
+    {11, 16, 9, 14, 19, 12, 18},// Shift 5: B4, E5, A4, D5, G5, C5, F#5
+    {11, 16, 21, 14, 19, 12, 18} // Shift 6: B4, E5, A5, D5, G5, C5, F#5
+  },
+  // Key of D: F#, C#, G, D, A, E, B (2 sharps)
+  {
+    {11, 4, 9, 2, 7, 1, 6},    // Shift 0: B4, E4, A4, D4, G4, C#4, F#4
+    {11, 4, 9, 2, 7, 13, 6},   // Shift 1: B4, E4, A4, D4, G4, C#5, F#4
+    {11, 4, 9, 14, 7, 13, 6},  // Shift 2: B4, E4, A4, D5, G4, C#5, F#4
+    {11, 16, 9, 14, 7, 13, 6}, // Shift 3: B4, E5, A4, D5, G4, C#5, F#4
+    {11, 16, 9, 14, 7, 13, 18},// Shift 4: B4, E5, A4, D5, G4, C#5, F#5
+    {11, 16, 9, 14, 19, 13, 18},// Shift 5: B4, E5, A4, D5, G5, C#5, F#5
+    {11, 16, 21, 14, 19, 13, 18} // Shift 6: B4, E5, A5, D5, G5, C#5, F#5
+  },
+  // Key of A: F#, C#, G#, D, A, E, B (3 sharps)
+  {
+    {11, 4, 9, 2, 8, 1, 6},    // Shift 0: B4, E4, A4, D4, G#4, C#4, F#4
+    {11, 4, 9, 2, 8, 13, 6},   // Shift 1: B4, E4, A4, D4, G#4, C#5, F#4
+    {11, 4, 9, 14, 8, 13, 6},  // Shift 2: B4, E4, A4, D5, G#4, C#5, F#4
+    {11, 16, 9, 14, 8, 13, 6}, // Shift 3: B4, E5, A4, D5, G#4, C#5, F#4
+    {11, 16, 9, 14, 8, 13, 18},// Shift 4: B4, E5, A4, D5, G#4, C#5, F#5
+    {11, 16, 9, 14, 20, 13, 18},// Shift 5: B4, E5, A4, D5, G#5, C#5, F#5
+    {11, 16, 21, 14, 20, 13, 18} // Shift 6: B4, E5, A5, D5, G#5, C#5, F#5
+  },
+  // Key of E: F#, C#, G#, D#, A, E, B (4 sharps)
+  {
+    {11, 4, 9, 3, 8, 1, 6},    // Shift 0: B4, E4, A4, D#4, G#4, C#4, F#4
+    {11, 4, 9, 3, 8, 13, 6},   // Shift 1: B4, E4, A4, D#4, G#4, C#5, F#4
+    {11, 4, 9, 15, 8, 13, 6},  // Shift 2: B4, E4, A4, D#5, G#4, C#5, F#4
+    {11, 16, 9, 15, 8, 13, 6}, // Shift 3: B4, E5, A4, D#5, G#4, C#5, F#4
+    {11, 16, 9, 15, 8, 13, 18},// Shift 4: B4, E5, A4, D#5, G#4, C#5, F#5
+    {11, 16, 9, 15, 20, 13, 18},// Shift 5: B4, E5, A4, D#5, G#5, C#5, F#5
+    {11, 16, 21, 15, 20, 13, 18} // Shift 6: B4, E5, A5, D#5, G#5, C#5, F#5
+  },
+  // Key of B: F#, C#, G#, D#, A#, E, B (5 sharps)
+  {
+    {11, 4, 10, 3, 8, 1, 6},   // Shift 0: B4, E4, A#4, D#4, G#4, C#4, F#4
+    {11, 4, 10, 3, 8, 13, 6},  // Shift 1: B4, E4, A#4, D#4, G#4, C#5, F#4
+    {11, 4, 10, 15, 8, 13, 6}, // Shift 2: B4, E4, A#4, D#5, G#4, C#5, F#4
+    {11, 16, 10, 15, 8, 13, 6},// Shift 3: B4, E5, A#4, D#5, G#4, C#5, F#4
+    {11, 16, 10, 15, 8, 13, 18},// Shift 4: B4, E5, A#4, D#5, G#4, C#5, F#5
+    {11, 16, 10, 15, 20, 13, 18},// Shift 5: B4, E5, A#4, D#5, G#5, C#5, F#5
+    {11, 16, 22, 15, 20, 13, 18} // Shift 6: B4, E5, A#5, D#5, G#5, C#5, F#5
+  },
+  // Key of F: F, C, G, D, A, E, Bb (1 flat)
+  {
+    {10, 4, 9, 2, 7, 0, 5},    // Shift 0: Bb4, E4, A4, D4, G4, C4, F4
+    {10, 4, 9, 2, 7, 12, 5},   // Shift 1: Bb4, E4, A4, D4, G4, C5, F4
+    {10, 4, 9, 14, 7, 12, 5},  // Shift 2: Bb4, E4, A4, D5, G4, C5, F4
+    {10, 16, 9, 14, 7, 12, 5}, // Shift 3: Bb4, E5, A4, D5, G4, C5, F4
+    {10, 16, 9, 14, 7, 12, 17},// Shift 4: Bb4, E5, A4, D5, G4, C5, F5
+    {10, 16, 9, 14, 19, 12, 17},// Shift 5: Bb4, E5, A4, D5, G5, C5, F5
+    {10, 16, 21, 14, 19, 12, 17} // Shift 6: Bb4, E5, A5, D5, G5, C5, F5
+  },
+  // Key of Bb: F, C, G, D, A, Eb, Bb (2 flats)
+  {
+    {10, 3, 9, 2, 7, 0, 5},    // Shift 0: Bb4, Eb4, A4, D4, G4, C4, F4
+    {10, 3, 9, 2, 7, 12, 5},   // Shift 1: Bb4, Eb4, A4, D4, G4, C5, F4
+    {10, 3, 9, 14, 7, 12, 5},  // Shift 2: Bb4, Eb4, A4, D5, G4, C5, F4
+    {10, 15, 9, 14, 7, 12, 5}, // Shift 3: Bb4, Eb5, A4, D5, G4, C5, F4
+    {10, 15, 9, 14, 7, 12, 17},// Shift 4: Bb4, Eb5, A4, D5, G4, C5, F5
+    {10, 15, 9, 14, 19, 12, 17},// Shift 5: Bb4, Eb5, A4, D5, G5, C5, F5
+    {10, 15, 21, 14, 19, 12, 17} // Shift 6: Bb4, Eb5, A5, D5, G5, C5, F5
+  },
+  // Key of Eb: F, C, G, D, Ab, Eb, Bb (3 flats)
+  {
+    {10, 3, 8, 2, 7, 0, 5},    // Shift 0: Bb4, Eb4, Ab4, D4, G4, C4, F4
+    {10, 3, 8, 2, 7, 12, 5},   // Shift 1: Bb4, Eb4, Ab4, D4, G4, C5, F4
+    {10, 3, 8, 14, 7, 12, 5},  // Shift 2: Bb4, Eb4, Ab4, D5, G4, C5, F4
+    {10, 15, 8, 14, 7, 12, 5}, // Shift 3: Bb4, Eb5, Ab4, D5, G4, C5, F4
+    {10, 15, 8, 14, 7, 12, 17},// Shift 4: Bb4, Eb5, Ab4, D5, G4, C5, F5
+    {10, 15, 8, 14, 19, 12, 17},// Shift 5: Bb4, Eb5, Ab4, D5, G5, C5, F5
+    {10, 15, 20, 14, 19, 12, 17} // Shift 6: Bb4, Eb5, Ab5, D5, G5, C5, F5
+  },
+  // Key of Ab: F, C, G, D, A, E, B (4 flats, but using natural C and D)
+  {
+    {11, 4, 9, 2, 7, 0, 5},    // Shift 0: B4, E4, A4, D4, G4, C4, F4
+    {11, 4, 9, 2, 7, 12, 5},   // Shift 1: B4, E4, A4, D4, G4, C5, F4
+    {11, 4, 9, 14, 7, 12, 5},  // Shift 2: B4, E4, A4, D5, G4, C5, F4
+    {11, 16, 9, 14, 7, 12, 5}, // Shift 3: B4, E5, A4, D5, G4, C5, F4
+    {11, 16, 9, 14, 7, 12, 17},// Shift 4: B4, E5, A4, D5, G4, C5, F5
+    {11, 16, 9, 14, 19, 12, 17},// Shift 5: B4, E5, A4, D5, G5, C5, F5
+    {11, 16, 21, 14, 19, 12, 17} // Shift 6: B4, E5, A5, D5, G5, C5, F5
+  },
+  // Key of Db: F, C, Gb, Db, Ab, Eb, Bb (5 flats)
+  {
+    {10, 3, 8, 1, 6, 0, 5},    // Shift 0: Bb4, Eb4, Ab4, Db4, Gb4, C4, F4
+    {10, 3, 8, 1, 6, 12, 5},   // Shift 1: Bb4, Eb4, Ab4, Db4, Gb4, C5, F4
+    {10, 3, 8, 13, 6, 12, 5},  // Shift 2: Bb4, Eb4, Ab4, Db5, Gb4, C5, F4
+    {10, 15, 8, 13, 6, 12, 5}, // Shift 3: Bb4, Eb5, Ab4, Db5, Gb4, C5, F4
+    {10, 15, 8, 13, 6, 12, 17},// Shift 4: Bb4, Eb5, Ab4, Db5, Gb4, C5, F5
+    {10, 15, 8, 13, 18, 12, 17},// Shift 5: Bb4, Eb5, Ab4, Db5, Gb5, C5, F5
+    {10, 15, 20, 13, 18, 12, 17} // Shift 6: Bb4, Eb5, Ab5, Db5, Gb5, C5, F5
+  },
+  // Key of Gb: F, Cb, Gb, Db, Ab, Eb, Bb (6 flats)
+  {
+    {10, 3, 8, 1, 6, -1, 5},   // Shift 0: Bb4, Eb4, Ab4, Db4, Gb4, Cb4, F4
+    {10, 3, 8, 1, 6, 11, 5},   // Shift 1: Bb4, Eb4, Ab4, Db4, Gb4, Cb5, F4
+    {10, 3, 8, 13, 6, 11, 5},  // Shift 2: Bb4, Eb4, Ab4, Db5, Gb4, Cb5, F4
+    {10, 15, 8, 13, 6, 11, 5}, // Shift 3: Bb4, Eb5, Ab4, Db5, Gb4, Cb5, F4
+    {10, 15, 8, 13, 6, 11, 17},// Shift 4: Bb4, Eb5, Ab4, Db5, Gb4, Cb5, F5
+    {10, 15, 8, 13, 18, 11, 17},// Shift 5: Bb4, Eb5, Ab4, Db5, Gb5, Cb5, F5
+    {10, 15, 20, 13, 18, 11, 17} // Shift 6: Bb4, Eb5, Ab5, Db5, Gb5, Cb5, F5
+  }
 };
 float c_frequency = 130.81;                      // for C3
 uint8_t chord_octave_change=4;
@@ -506,44 +624,42 @@ void set_harp_voice_frequency(uint8_t i, uint16_t current_note) {
 uint8_t calculate_note_chord(uint8_t voice, bool slashed, bool sharp) {
     uint8_t note = 0;
     uint8_t level = chord_shuffling_array[chord_shuffling_selection][voice];
-    // Only slash the selected level of the chord
     if (slashed && level % 10 == note_slash_level) {
         if (!flat_button_modifier) {
-            note = (12 * int(level / 10) + root_button[chord_frame_shift][slash_value] + sharp * 1.0);
+            note = (12 * int(level / 10) + root_button_keys[key_center_selection][chord_frame_shift][slash_value] + sharp * 1.0);
         } else {
-            note = (12 * int(level / 10) + root_button[chord_frame_shift][slash_value] - sharp * 1.0);
+            note = (12 * int(level / 10) + root_button_keys[key_center_selection][chord_frame_shift][slash_value] - sharp * 1.0);
         }
     } else {
         if (!flat_button_modifier) {
-            note = (12 * int(level / 10) + root_button[chord_frame_shift][fundamental] + sharp * 1.0 + (*current_chord)[level % 10]);
+            note = (12 * int(level / 10) + root_button_keys[key_center_selection][chord_frame_shift][fundamental] + sharp * 1.0 + (*current_chord)[level % 10]);
         } else {
-            note = (12 * int(level / 10) + root_button[chord_frame_shift][fundamental] - sharp * 1.0 + (*current_chord)[level % 10]);
+            note = (12 * int(level / 10) + root_button_keys[key_center_selection][chord_frame_shift][fundamental] - sharp * 1.0 + (*current_chord)[level % 10]);
         }
     }
-    return note;
+    return constrain(note, 0, 127); // Ensure MIDI note is valid
 }
 // function to calculate the level of individual harp touch
 uint8_t calculate_note_harp(uint8_t string, bool slashed, bool sharp) {
     if (!chromatic_harp_mode) {
         uint8_t note = 0;
         uint8_t level = harp_shuffling_array[harp_shuffling_selection][string];
-        // Only slash the selected level of the chord
         if (slashed && level % 10 == note_slash_level) {
             if (!flat_button_modifier) {
-                note = (12 * int(level / 10) + root_button[chord_frame_shift][slash_value] + sharp * 1.0);
+                note = (12 * int(level / 10) + root_button_keys[key_center_selection][chord_frame_shift][slash_value] + sharp * 1.0);
             } else {
-                note = (12 * int(level / 10) + root_button[chord_frame_shift][slash_value] - sharp * 1.0);
+                note = (12 * int(level / 10) + root_button_keys[key_center_selection][chord_frame_shift][slash_value] - sharp * 1.0);
             }
         } else {
             if (!flat_button_modifier) {
-                note = (12 * int(level / 10) + root_button[chord_frame_shift][fundamental] + sharp * 1.0 + (*current_chord)[level % 10]);
+                note = (12 * int(level / 10) + root_button_keys[key_center_selection][chord_frame_shift][fundamental] + sharp * 1.0 + (*current_chord)[level % 10]);
             } else {
-                note = (12 * int(level / 10) + root_button[chord_frame_shift][fundamental] - sharp * 1.0 + (*current_chord)[level % 10]);
+                note = (12 * int(level / 10) + root_button_keys[key_center_selection][chord_frame_shift][fundamental] - sharp * 1.0 + (*current_chord)[level % 10]);
             }
         }
-        return note;
+        return constrain(note, 0, 127); // Ensure MIDI note is valid
     } else {
-        return string + 24; // Two octaves up to avoid being too low
+        return string + 24; // Chromatic mode, unaffected by key
     }
 }
 //-->>RYTHM MODE UTILITIES
@@ -679,6 +795,7 @@ void load_config(int bank_number) {
     Serial.print("No preset, writing factory default");
     save_config(bank_number, true); // reboot with default value
   }
+  key_center_selection = current_sysex_parameters[35];
   // Loading the potentiometer
   chord_pot.setup(chord_volume_sysex, 100, current_sysex_parameters[chord_pot_alternate_control], current_sysex_parameters[chord_pot_alternate_range], current_sysex_parameters,current_sysex_parameters[chord_pot_alternate_storage],apply_audio_parameter,chord_pot_alternate_storage);
   harp_pot.setup(harp_volume_sysex, 100, current_sysex_parameters[harp_pot_alternate_control], current_sysex_parameters[harp_pot_alternate_range], current_sysex_parameters,current_sysex_parameters[harp_pot_alternate_storage],apply_audio_parameter,harp_pot_alternate_storage);
