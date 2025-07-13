@@ -45,10 +45,11 @@ uint8_t aug[7] = {0, 4, 8, 12, 2, 5, 9};
 uint8_t dim[7] = {0, 3, 6, 12, 2, 5, 9};
 uint8_t full_dim[7] = {0, 3, 6, 9, 2, 5, 12};
 uint8_t key_signature_selection = 0; // 0=C, 1=G, 2=D, 3=A, 4=E, 5=B, 6=F, 7=Bb, 8=Eb, 9=Ab, 10=Db, 11=Gb
-// Enums for MIDI keys (unchanged)
-enum MidiKey {
-  MIDI_KEY_C = 0, MIDI_KEY_G, MIDI_KEY_D, MIDI_KEY_A, MIDI_KEY_E, MIDI_KEY_B,
-  MIDI_KEY_F, MIDI_KEY_Bb, MIDI_KEY_Eb, MIDI_KEY_Ab, MIDI_KEY_Db, MIDI_KEY_Gb
+
+// Enums for KeySigs
+enum KeySig {
+  KEY_SIG_C = 0, KEY_SIG_G, KEY_SIG_D, KEY_SIG_A, KEY_SIG_E, KEY_SIG_B,
+  KEY_SIG_F, KEY_SIG_Bb, KEY_SIG_Eb, KEY_SIG_Ab, KEY_SIG_Db, KEY_SIG_Gb
 };
 
 // Button enum in hardware order: B, E, A, D, G, C, F
@@ -56,17 +57,18 @@ enum Button {
   BTN_B = 0, BTN_E, BTN_A, BTN_D, BTN_G, BTN_C, BTN_F
 };
 
-enum Shift {
-  SHIFT_0 = 0, SHIFT_1, SHIFT_2, SHIFT_3, SHIFT_4, SHIFT_5, SHIFT_6
+//Enums for chord frame shifts
+enum FrameShift {
+  FRAMESHIFT_0 = 0, FRAMESHIFT_1,FRAMESHIFT_2,FRAMESHIFT_3,FRAMESHIFT_4,FRAMESHIFT_5,FRAMESHIFT_6
 };
 
 // Base note offsets for buttons in key of C (relative to C4 = MIDI 60), in hardware order
 const int8_t base_notes[7] = {11, 4, 9, 2, 7, 0, 5}; // B, E, A, D, G, C, F
 
-// Circle of fifths: semitone offset for each key’s root note relative to C (unchanged)
+// Circle of fifths: semitone offset for each key’s root note relative to C
 const int8_t key_offsets[12] = {0, 7, 2, 9, 4, 11, 5, 10, 3, 8, 1, 6}; // C, G, D, A, E, B, F, Bb, Eb, Ab, Db, Gb
 
-// Number of sharps or flats for each key (unchanged)
+// Number of sharps or flats for each key
 const int8_t key_signatures[12] = {0, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 6}; // Sharps for C, G, D, A, E, B; flats for F, Bb, Eb, Ab, Db, Gb
 
 // Notes affected by sharps in each key, in hardware order (B, E, A, D, G, C, F)
@@ -90,7 +92,7 @@ const int8_t flat_notes[6][6] = {
 };
 
 // Function to compute MIDI note offset dynamically with circular frame shift
-int8_t get_root_note(uint8_t key, uint8_t shift, uint8_t button) {
+int8_t get_root_button(uint8_t key, uint8_t shift, uint8_t button) {
   int8_t note = base_notes[button]; // Start with base note in C (e.g., B = 11, E = 4, ..., F = 5)
 
   // Apply circular frame shift: move notes C, D, E, F, G, A, B up an octave based on shift
@@ -112,7 +114,7 @@ int8_t get_root_note(uint8_t key, uint8_t shift, uint8_t button) {
 
   // Apply key signature (sharps or flats)
   int8_t num_accidentals = key_signatures[key];
-  if (key <= MIDI_KEY_B) { // Sharp keys (C, G, D, A, E, B)
+  if (key <= KEY_SIG_B) { // Sharp keys (C, G, D, A, E, B)
     for (int i = 0; i < num_accidentals; i++) {
       if (button == sharp_notes[num_accidentals - 1][i]) {
         note += 1; // Add sharp
@@ -585,15 +587,15 @@ uint8_t calculate_note_chord(uint8_t voice, bool slashed, bool sharp) {
   uint8_t level = chord_shuffling_array[chord_shuffling_selection][voice];
   if (slashed && level % 10 == note_slash_level) {
     if (!flat_button_modifier) {
-      note = (12 * int(level / 10) + get_root_note(key_signature_selection, chord_frame_shift, slash_value) + sharp * 1.0);
+      note = (12 * int(level / 10) + get_root_button(key_signature_selection, chord_frame_shift, slash_value) + sharp * 1.0);
     } else {
-      note = (12 * int(level / 10) + get_root_note(key_signature_selection, chord_frame_shift, slash_value) - sharp * 1.0);
+      note = (12 * int(level / 10) + get_root_button(key_signature_selection, chord_frame_shift, slash_value) - sharp * 1.0);
     }
   } else {
     if (!flat_button_modifier) {
-      note = (12 * int(level / 10) + get_root_note(key_signature_selection, chord_frame_shift, fundamental) + sharp * 1.0 + (*current_chord)[level % 10]);
+      note = (12 * int(level / 10) + get_root_button(key_signature_selection, chord_frame_shift, fundamental) + sharp * 1.0 + (*current_chord)[level % 10]);
     } else {
-      note = (12 * int(level / 10) + get_root_note(key_signature_selection, chord_frame_shift, fundamental) - sharp * 1.0 + (*current_chord)[level % 10]);
+      note = (12 * int(level / 10) + get_root_button(key_signature_selection, chord_frame_shift, fundamental) - sharp * 1.0 + (*current_chord)[level % 10]);
     }
   }
   return constrain(note, 0, 127); // Ensure valid MIDI note
@@ -605,15 +607,15 @@ uint8_t calculate_note_harp(uint8_t string, bool slashed, bool sharp) {
     uint8_t level = harp_shuffling_array[harp_shuffling_selection][string];
     if (slashed && level % 10 == note_slash_level) {
       if (!flat_button_modifier) {
-        note = (12 * int(level / 10) + get_root_note(key_signature_selection, chord_frame_shift, slash_value) + sharp * 1.0);
+        note = (12 * int(level / 10) + get_root_button(key_signature_selection, chord_frame_shift, slash_value) + sharp * 1.0);
       } else {
-        note = (12 * int(level / 10) + get_root_note(key_signature_selection, chord_frame_shift, slash_value) - sharp * 1.0);
+        note = (12 * int(level / 10) + get_root_button(key_signature_selection, chord_frame_shift, slash_value) - sharp * 1.0);
       }
     } else {
       if (!flat_button_modifier) {
-        note = (12 * int(level / 10) + get_root_note(key_signature_selection, chord_frame_shift, fundamental) + sharp * 1.0 + (*current_chord)[level % 10]);
+        note = (12 * int(level / 10) + get_root_button(key_signature_selection, chord_frame_shift, fundamental) + sharp * 1.0 + (*current_chord)[level % 10]);
       } else {
-        note = (12 * int(level / 10) + get_root_note(key_signature_selection, chord_frame_shift, fundamental) - sharp * 1.0 + (*current_chord)[level % 10]);
+        note = (12 * int(level / 10) + get_root_button(key_signature_selection, chord_frame_shift, fundamental) - sharp * 1.0 + (*current_chord)[level % 10]);
       }
     }
     return constrain(note, 0, 127);
