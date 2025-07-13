@@ -30,6 +30,9 @@ void apply_audio_parameter(int adress, int value) {
       case 36:
         voice_leading_enabled=value;
         break;
+      case 35:
+        key_signature_selection=value;
+        break;
       case 24:
         main_reverb.size(value/100.0);
         break;
