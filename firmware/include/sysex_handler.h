@@ -27,6 +27,9 @@ void apply_audio_parameter(int adress, int value) {
       case 34:
         chord_frame_shift=value;
         break;
+      case 36:
+        voice_leading_enabled=value;
+        break;
       case 24:
         main_reverb.size(value/100.0);
         break;
