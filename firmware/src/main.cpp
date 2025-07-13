@@ -131,7 +131,6 @@ int8_t get_root_button(uint8_t key, uint8_t shift, uint8_t button) {
   return constrain(note, -60, 67); // Ensure valid MIDI offset relative to C4
 }
 
-
 float c_frequency = 130.81;                      // for C3
 uint8_t chord_octave_change=4;
 uint8_t harp_octave_change=4;
@@ -756,7 +755,6 @@ void load_config(int bank_number) {
     Serial.print("No preset, writing factory default");
     save_config(bank_number, true); // reboot with default value
   }
-  key_signature_selection = current_sysex_parameters[35];
   // Loading the potentiometer
   chord_pot.setup(chord_volume_sysex, 100, current_sysex_parameters[chord_pot_alternate_control], current_sysex_parameters[chord_pot_alternate_range], current_sysex_parameters,current_sysex_parameters[chord_pot_alternate_storage],apply_audio_parameter,chord_pot_alternate_storage);
   harp_pot.setup(harp_volume_sysex, 100, current_sysex_parameters[harp_pot_alternate_control], current_sysex_parameters[harp_pot_alternate_range], current_sysex_parameters,current_sysex_parameters[harp_pot_alternate_storage],apply_audio_parameter,harp_pot_alternate_storage);
