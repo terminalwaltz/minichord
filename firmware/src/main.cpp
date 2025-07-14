@@ -78,7 +78,7 @@ const int8_t flat_notes[6][6] = { // Notes affected by flats in each key, in har
 
 uint8_t scalar_harp_selection = 0; // Selected mode: 0=Chord-based (default), 1=Major, 2=Dorian, 3=Phrygian, 4=Lydian, 5=Mixolydian, 6=Natural Minor, 7=Locrian, 8=Harmonic Minor, 9=Major Pentatonic
 // Scale intervals (semitones from root note), indexed from 1
-const uint8_t scale_intervals[9][7] = {
+const uint8_t scale_intervals[10][7] = {
   {0, 2, 4, 5, 7, 9, 11}, // 1: Major (Ionian)
   {0, 2, 3, 5, 7, 9, 10}, // 2: Dorian
   {0, 1, 3, 5, 7, 8, 10}, // 3: Phrygian
@@ -88,6 +88,7 @@ const uint8_t scale_intervals[9][7] = {
   {0, 1, 3, 5, 6, 8, 10}, // 7: Locrian
   {0, 2, 3, 5, 7, 8, 11}, // 8: Harmonic Minor
   {0, 2, 4, 7, 9, 0, 0},  // 9: Major Pentatonic (5 notes, last two unused)
+  {0, 2, 3, 7, 10, 0, 0},  // 10: Minor Pentatonic
 };
 const uint8_t scale_lengths[9] = {7, 7, 7, 7, 7, 7, 7, 7, 5}; // Number of notes in each scale
 
