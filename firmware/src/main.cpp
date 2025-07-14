@@ -76,15 +76,15 @@ const int8_t flat_notes[6][6] = { // Notes affected by flats in each key, in har
 };
 
 
-uint8_t scalar_harp_selection = 0; // Selected mode: 0=Chord-based (default), 1=Major, 2=Natural Minor, 3=Dorian, 4=Phrygian, 5=Lydian, 6=Mixolydian, 7=Locrian, 8=Harmonic Minor, 9=Major Pentatonic
+uint8_t scalar_harp_selection = 0; // Selected mode: 0=Chord-based (default), 1=Major, 2=Dorian, 3=Phrygian, 4=Lydian, 5=Mixolydian, 6=Natural Minor, 7=Locrian, 8=Harmonic Minor, 9=Major Pentatonic
 // Scale intervals (semitones from root note), indexed from 1
 const uint8_t scale_intervals[9][7] = {
   {0, 2, 4, 5, 7, 9, 11}, // 1: Major (Ionian)
-  {0, 2, 3, 5, 7, 8, 10}, // 2: Natural Minor (Aeolian)
-  {0, 2, 3, 5, 7, 9, 10}, // 3: Dorian
-  {0, 1, 3, 5, 7, 8, 10}, // 4: Phrygian
-  {0, 2, 4, 6, 7, 9, 11}, // 5: Lydian
-  {0, 2, 4, 5, 7, 9, 10}, // 6: Mixolydian
+  {0, 2, 3, 5, 7, 9, 10}, // 2: Dorian
+  {0, 1, 3, 5, 7, 8, 10}, // 3: Phrygian
+  {0, 2, 4, 6, 7, 9, 11}, // 4: Lydian
+  {0, 2, 4, 5, 7, 9, 10}, // 5: Mixolydian
+  {0, 2, 3, 5, 7, 8, 10}, // 6: Natural Minor (Aeolian)
   {0, 1, 3, 5, 6, 8, 10}, // 7: Locrian
   {0, 2, 3, 5, 7, 8, 11}, // 8: Harmonic Minor
   {0, 2, 4, 7, 9, 0, 0},  // 9: Major Pentatonic (5 notes, last two unused)
