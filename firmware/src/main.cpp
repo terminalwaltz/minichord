@@ -90,7 +90,7 @@ const uint8_t scale_intervals[10][7] = {
   {0, 2, 4, 7, 9, 0, 0},  // 9: Major Pentatonic (5 notes, last two unused)
   {0, 2, 3, 7, 10, 0, 0},  // 10: Minor Pentatonic
 };
-const uint8_t scale_lengths[9] = {7, 7, 7, 7, 7, 7, 7, 7, 5}; // Number of notes in each scale
+const uint8_t scale_lengths[10] = {7, 7, 7, 7, 7, 7, 7, 7, 5, 5}; // Number of notes in each scale
 
 float c_frequency = 130.81;                      // for C3
 uint8_t chord_octave_change=4;
