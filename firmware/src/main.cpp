@@ -75,6 +75,22 @@ const int8_t flat_notes[6][6] = { // Notes affected by flats in each key, in har
   {BTN_B, BTN_E, BTN_A, BTN_D, BTN_G, BTN_C} // 6 flats: Bb, Eb, Ab, Db, Gb, Cb
 };
 
+
+uint8_t scalar_harp_selection = 0; // Selected mode: 0=Chord-based (default), 1=Major, 2=Natural Minor, 3=Dorian, 4=Phrygian, 5=Lydian, 6=Mixolydian, 7=Locrian, 8=Harmonic Minor, 9=Major Pentatonic
+// Scale intervals (semitones from root note), indexed from 1
+const uint8_t scale_intervals[9][7] = {
+  {0, 2, 4, 5, 7, 9, 11}, // 1: Major (Ionian)
+  {0, 2, 3, 5, 7, 8, 10}, // 2: Natural Minor (Aeolian)
+  {0, 2, 3, 5, 7, 9, 10}, // 3: Dorian
+  {0, 1, 3, 5, 7, 8, 10}, // 4: Phrygian
+  {0, 2, 4, 6, 7, 9, 11}, // 5: Lydian
+  {0, 2, 4, 5, 7, 9, 10}, // 6: Mixolydian
+  {0, 1, 3, 5, 6, 8, 10}, // 7: Locrian
+  {0, 2, 3, 5, 7, 8, 11}, // 8: Harmonic Minor
+  {0, 2, 4, 7, 9, 0, 0},  // 9: Major Pentatonic (5 notes, last two unused)
+};
+const uint8_t scale_lengths[9] = {7, 7, 7, 7, 7, 7, 7, 7, 5}; // Number of notes in each scale
+
 float c_frequency = 130.81;                      // for C3
 uint8_t chord_octave_change=4;
 uint8_t harp_octave_change=4;
@@ -581,7 +597,20 @@ uint8_t calculate_note_chord(uint8_t voice, bool slashed, bool sharp) {
 }
 // function to calculate the level of individual harp touch
 uint8_t calculate_note_harp(uint8_t string, bool slashed, bool sharp) {
-  if (!chromatic_harp_mode) {
+  if (scalar_harp_selection >= 1) {
+    // Scalar harp mode: map strings to the selected scale in the current key
+    uint8_t scale_index = scalar_harp_selection - 1; // Adjust for 0-based array indexing
+    uint8_t scale_length = scale_lengths[scale_index]; // Number of notes in the selected scale
+    uint8_t octave = string / scale_length; // Determine the octave
+    uint8_t scale_degree = string % scale_length; // Map string to a scale degree
+    uint8_t root_note = key_offsets[key_signature_selection]; // Root note offset for the selected key
+    uint8_t note = root_note + scale_intervals[scale_index][scale_degree] + (octave * 12);
+    return note + 24; // Start at MIDI note 24 (C2) as a base
+  } else if (chromatic_harp_mode) {
+    // Chromatic mode: existing behavior
+    return string + 24; // Chromatic notes starting from C2
+  } else {
+    // Chord-based mode (scalar_harp_selection == 0): use harp_shuffling_array
     uint8_t note = 0;
     uint8_t level = harp_shuffling_array[harp_shuffling_selection][string];
     if (slashed && level % 10 == note_slash_level) {
@@ -598,8 +627,6 @@ uint8_t calculate_note_harp(uint8_t string, bool slashed, bool sharp) {
       }
     }
     return note;
-  } else {
-    return string + 24; // Chromatic mode
   }
 }
 //-->>RYTHM MODE UTILITIES
