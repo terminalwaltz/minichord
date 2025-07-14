@@ -376,30 +376,79 @@ function initializeSliderHoverEffects() {
 document.addEventListener('DOMContentLoaded', initializeSliderHoverEffects);
 
 //-->>RANDOM PRESET GENERATOR
-// Function to fetch and parse parameters.json
+// Function to fetch and parse parameters.json and optionally load a random preset
 async function loadParameterRanges() {
   try {
-    const response = await fetch('./json/parameters.json');
-    const parametersData = await response.json();
+    const [parametersResponse, presetsResponse] = await Promise.all([
+      fetch('./json/parameters.json'),
+      fetch('./json/shared_presets.json')
+    ]);
+    
+    const parametersData = await parametersResponse.json();
+    const presetsData = await presetsResponse.json();
     
     const parameterRanges = {};
+    
+    // Select a random preset
+    const randomPreset = presetsData.shared_presets[Math.floor(Math.random() * presetsData.shared_presets.length)];
+    console.log(`Using random preset as base: "${randomPreset.name}" by ${randomPreset.author}`);
+    
+    // Decode the preset values
+    const decodedPreset = atob(randomPreset.value).split(';').map(v => parseFloat(v));
     
     // Process all parameter categories
     ['global_parameter', 'harp_parameter', 'chord_parameter'].forEach(category => {
       parametersData[category].forEach(param => {
+        const presetValue = decodedPreset[param.sysex_adress];
+        let defaultValue = param.default_value;
+        
+        // Use preset value if available, otherwise fall back to original default
+        if (presetValue !== undefined && presetValue !== null && !isNaN(presetValue)) {
+          if (param.data_type === "float") {
+            defaultValue = presetValue / 100; // Convert back from stored format
+          } else {
+            defaultValue = presetValue;
+          }
+        }
+        
         parameterRanges[param.sysex_adress] = {
           min: param.min_value,
           max: param.max_value,
           type: param.data_type,
-          default: param.default_value
+          default: defaultValue,
+          original_default: param.default_value // Keep original default for reference
         };
       });
     });
     
     return parameterRanges;
   } catch (error) {
-    console.error('Error loading parameter ranges:', error);
-    return {};
+    console.error('Error loading parameter ranges or presets:', error);
+    // Fallback to original behavior if preset loading fails
+    try {
+      const response = await fetch('./json/parameters.json');
+      const parametersData = await response.json();
+      
+      const parameterRanges = {};
+      
+      ['global_parameter', 'harp_parameter', 'chord_parameter'].forEach(category => {
+        parametersData[category].forEach(param => {
+          parameterRanges[param.sysex_adress] = {
+            min: param.min_value,
+            max: param.max_value,
+            type: param.data_type,
+            default: param.default_value,
+            original_default: param.default_value // Keep original default for reference
+
+          };
+        });
+      });
+      
+      return parameterRanges;
+    } catch (fallbackError) {
+      console.error('Error loading parameter ranges:', fallbackError);
+      return {};
+    }
   }
 }
 
@@ -423,7 +472,7 @@ async function generateRandomPreset() {
   
   const parameterRanges = await loadParameterRanges();
 
-  const weirdness_factor = 0.20;
+  const weirdness_factor = 0.10;
 
   // Initialize preset array
   const preset = Array(miniChordController.parameter_size).fill(0);
@@ -436,7 +485,7 @@ async function generateRandomPreset() {
     
     if (idx < 19 || fixedValues.includes(idx)) {
       // For parameters below 19, keep the default values
-      preset[idx] = params.default;
+      preset[idx] = params.original_default;
     } else {
       // For parameters above 21, generate random values with normal distribution
       const minVal = params.min;
