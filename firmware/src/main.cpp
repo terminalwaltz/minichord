@@ -603,7 +603,7 @@ uint8_t calculate_note_harp(uint8_t string, bool slashed, bool sharp) {
     uint8_t scale_degree = string % scale_length; // Map string to a scale degree
     uint8_t root_note = key_offsets[key_signature_selection]; // Root note offset for the selected key
     uint8_t note = root_note + scale_intervals[scale_index][scale_degree] + (octave * 12);
-    return note + 24; // Start at MIDI note 24 (C2) as a base
+    return note;
   } else if (chromatic_harp_mode) {
     // Chromatic mode: existing behavior
     return string + 24; // Chromatic notes starting from C2
