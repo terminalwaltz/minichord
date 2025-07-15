@@ -76,15 +76,18 @@ void potentiometer::force_update(){
         int16_t base_value = current_sysex_parameters_pointer[alternate_adress];
         base_value = constrain(base_value, min_value, max_value);
         uint16_t min_val, max_val;
-        if (base_value == 0) {
-            // Fallback to lookup table range, scaled by 100
-            min_val = min_value * 100;
-            max_val = max_value * 100;
-        } else {
-            // Scale around base_value * 100, cap to avoid overflow
-            min_val = max(0, (int32_t)(base_value * 100 * (1.0f - alternate_range / 100.0f)));
-            max_val = min(65535, (int32_t)(base_value * 100 * (1.0f + alternate_range / 100.0f)));
-        }
+        float scaled_min, scaled_max;
+            if (base_value == 0) {
+                // Fallback: use full parameter range
+                scaled_min = min_value;
+                scaled_max = max_value;
+            } else {
+                // Scale around current value but clamp to valid range
+                scaled_min = max((float)min_value, base_value * (1.0f - alternate_range / 100.0f));
+                scaled_max = min((float)max_value, base_value * (1.0f + alternate_range / 100.0f));
+            }
+        min_val = scaled_min * 100;
+        max_val = scaled_max * 100;
         output_value = constrain(map(alternate_value, dead_zone, 1024 - dead_zone, min_val, max_val), min_val, max_val);
         Serial.print("force_update float: adress=");
         Serial.print(alternate_adress);
@@ -160,15 +163,18 @@ bool potentiometer::update_parameter(bool alternate_flag){
                 int16_t base_value = current_sysex_parameters_pointer[main_adress];
                 base_value = constrain(base_value, min_value, max_value);
                 uint16_t min_val, max_val;
-                if (base_value == 0) {
-                    // Fallback to lookup table range, scaled by 100
-                    min_val = min_value * 100;
-                    max_val = max_value * 100;
-                } else {
-                    // Scale around base_value * 100, cap to avoid overflow
-                    min_val = max(0, (int32_t)(base_value * 100 * (1.0f - range / 100.0f)));
-                    max_val = min(65535, (int32_t)(base_value * 100 * (1.0f + range / 100.0f)));
-                }
+                float scaled_min, scaled_max;
+                    if (base_value == 0) {
+                        // Fallback: use full parameter range
+                        scaled_min = min_value;
+                        scaled_max = max_value;
+                    } else {
+                        // Scale around current value but clamp to valid range
+                        scaled_min = max((float)min_value, base_value * (1.0f - range / 100.0f));
+                        scaled_max = min((float)max_value, base_value * (1.0f + range / 100.0f));
+                    }
+                min_val = scaled_min * 100;
+                max_val = scaled_max * 100;
                 output_value = constrain(map(potentiometer_smoothed_value, dead_zone, 1024 - dead_zone, min_val, max_val), min_val, max_val);
                 Serial.print("update_parameter main float: adress=");
                 Serial.print(main_adress);
@@ -204,15 +210,18 @@ bool potentiometer::update_parameter(bool alternate_flag){
                 int16_t base_value = current_sysex_parameters_pointer[alternate_adress];
                 base_value = constrain(base_value, min_value, max_value);
                 uint16_t min_val, max_val;
-                if (base_value == 0) {
-                    // Fallback to lookup table range, scaled by 100
-                    min_val = min_value * 100;
-                    max_val = max_value * 100;
-                } else {
-                    // Scale around base_value * 100, cap to avoid overflow
-                    min_val = max(0, (int32_t)(base_value * 100 * (1.0f - range / 100.0f)));
-                    max_val = min(65535, (int32_t)(base_value * 100 * (1.0f + range / 100.0f)));
-                }
+                float scaled_min, scaled_max;
+                    if (base_value == 0) {
+                        // Fallback: use full parameter range
+                        scaled_min = min_value;
+                        scaled_max = max_value;
+                    } else {
+                        // Scale around current value but clamp to valid range
+                        scaled_min = max((float)min_value, base_value * (1.0f - range / 100.0f));
+                        scaled_max = min((float)max_value, base_value * (1.0f + range / 100.0f));
+                    }
+                min_val = scaled_min * 100;
+                max_val = scaled_max * 100;
                 output_value = constrain(map(potentiometer_smoothed_value, dead_zone, 1024 - dead_zone, min_val, max_val), min_val, max_val);
                 Serial.print("update_parameter alternate float: adress=");
                 Serial.print(alternate_adress);
