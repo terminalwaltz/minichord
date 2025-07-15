@@ -76,23 +76,18 @@ const int8_t flat_notes[6][6] = { // Notes affected by flats in each key, in har
 };
 
 
-uint8_t scalar_harp_selection = 0; // Selected mode: 0=Chord-based (default), 1=Major, 2=Dorian, 3=Phrygian, 4=Lydian, 5=Mixolydian, 6=Natural Minor, 7=Locrian, 8=Harmonic Minor, 9=Major Pentatonic
+uint8_t scalar_harp_selection = 0; // Selected mode: 0=Chord-based (default), 1=Major, 2=Major Pentatonic, 3=Minor Pentatonic, 4=Diminished 6th Scale, 5=Relative Natural Minor, 6=Relative Harmonic Minor, 7=Relative Minor Pentatonic
 // Scale intervals (semitones from root note), indexed from 1
-const uint8_t scale_intervals[12][7] = {
-  {0, 2, 4, 5, 7, 9, 11}, // 1: Major (Ionian)
-  {0, 2, 3, 5, 7, 9, 10}, // 2: Dorian
-  {0, 1, 3, 5, 7, 8, 10}, // 3: Phrygian
-  {0, 2, 4, 6, 7, 9, 11}, // 4: Lydian
-  {0, 2, 4, 5, 7, 9, 10}, // 5: Mixolydian
-  {0, 2, 3, 5, 7, 8, 10}, // 6: Natural Minor (Aeolian)
-  {0, 1, 3, 5, 6, 8, 10}, // 7: Locrian
-  {0, 2, 3, 5, 7, 8, 11}, // 8: Harmonic Minor
-  {0, 2, 4, 7, 9, 0, 0},  // 9: Major Pentatonic (5 notes, last two unused)
-  {0, 2, 3, 7, 10, 0, 0},  // 10: Minor Pentatonic
-  {-3, -1, 0, 2, 4, 5, 7}, // 11: Relative Natural Minor
-  {-3, -1, 0, 2, 4, 5, 8} // 12: Relative Harmonic Minor
+const uint8_t scale_intervals[7][8] = {
+  {0, 2, 4, 5, 7, 9, 11, 0}, // 1: Major (Ionian)
+  {0, 2, 4, 7, 9, 0, 0, 0},  // 2: Major Pentatonic (5 notes, last three unused)
+  {0, 2, 3, 7, 10, 0, 0, 0}, // 3: Minor Pentatonic
+  {0, 2, 4, 5, 7, 8, 9, 11}, // 4: Diminished 6th Scale
+  {-3, -1, 0, 2, 4, 5, 7, 0}, // 5: Relative Natural Minor
+  {-3, -1, 0, 2, 4, 5, 8, 0}, // 6: Relative Harmonic Minor
+  {-3, -1, 0, 4, 7, 0, 0, 0}  // 7: Relative Minor Pentatonic
 };
-const uint8_t scale_lengths[12] = {7, 7, 7, 7, 7, 7, 7, 7, 5, 5, 7, 7}; // Number of notes in each scale
+const uint8_t scale_lengths[7] = {7, 5, 5, 8, 7, 7, 5}; // Number of notes in each scale
 
 float c_frequency = 130.81;                      // for C3
 uint8_t chord_octave_change=4;
