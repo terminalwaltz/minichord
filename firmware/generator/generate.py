@@ -382,5 +382,5 @@ lookup_file_content += """};
 """
 
 # Write the lookup table to a new file
-with open('../include/parameter_lookup.h', 'w') as lookup_output:
+with open('../lib/potentiometer/src/parameter_lookup.h', 'w') as lookup_output:
     lookup_output.write(lookup_file_content)
