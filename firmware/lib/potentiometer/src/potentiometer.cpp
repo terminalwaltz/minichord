@@ -59,16 +59,46 @@ void potentiometer::force_update(){
     Serial.println(max_value);
     uint16_t output_value;
     if (found && is_integer) {
-        // Integer parameter: map stored alternate_value to min_value–max_value
-        output_value = constrain(map(alternate_value, dead_zone, 1024 - dead_zone, min_value, max_value), min_value, max_value);
-        Serial.print("force_update integer: adress=");
+        // Integer parameter: apply percent range to limit the number of accessible values
+        int16_t base_value = current_sysex_parameters_pointer[alternate_adress];
+        base_value = constrain(base_value, min_value, max_value);
+        int16_t range_size = max_value - min_value + 1; // Total number of integer values (e.g., 8 for 0–7)
+        float range_fraction = alternate_range / 100.0f; // Percent range as a fraction (e.g., 100% = 1.0)
+        
+        int16_t scaled_min, scaled_max;
+        if (range_fraction >= 1.0f) {
+            // Full range: use min_value and max_value directly
+            scaled_min = min_value;
+            scaled_max = max_value;
+        } else {
+            // Partial range: calculate scaled range centered around base_value
+            int16_t scaled_range = round(range_size * range_fraction); // Number of values in scaled range
+            scaled_range = max(1, scaled_range); // Ensure at least one value
+            int16_t half_range = scaled_range / 2;
+            scaled_min = max(min_value, base_value - half_range);
+            scaled_max = min(max_value, base_value + half_range);
+            // Ensure at least one value difference if scaled_min equals scaled_max
+            if (scaled_min == scaled_max) {
+                if (scaled_max < max_value) {
+                    scaled_max++;
+                } else if (scaled_min > min_value) {
+                    scaled_min--;
+                }
+            }
+        }
+        
+        // Map potentiometer value to the scaled integer range
+        output_value = constrain(map(potentiometer_smoothed_value, dead_zone, 1024 - dead_zone, scaled_min, scaled_max), min_value, max_value);
+        Serial.print("update_parameter integer: adress=");
         Serial.print(alternate_adress);
-        Serial.print(", alternate_value=");
-        Serial.print(alternate_value);
-        Serial.print(", min=");
-        Serial.print(min_value);
-        Serial.print(", max=");
-        Serial.print(max_value);
+        Serial.print(", base=");
+        Serial.print(base_value);
+        Serial.print(", smoothed=");
+        Serial.print(potentiometer_smoothed_value);
+        Serial.print(", scaled_min=");
+        Serial.print(scaled_min);
+        Serial.print(", scaled_max=");
+        Serial.print(scaled_max);
         Serial.print(", output=");
         Serial.println(output_value);
     } else {
@@ -146,16 +176,46 @@ bool potentiometer::update_parameter(bool alternate_flag){
         uint16_t output_value;
         if (!alternate_flag) {
             if (found && is_integer) {
-                // Integer parameter: map to min_value–max_value
-                output_value = constrain(map(potentiometer_smoothed_value, dead_zone, 1024 - dead_zone, min_value, max_value), min_value, max_value);
-                Serial.print("update_parameter main integer: adress=");
-                Serial.print(main_adress);
+                // Integer parameter: apply percent range to limit the number of accessible values
+                int16_t base_value = current_sysex_parameters_pointer[target_adress];
+                base_value = constrain(base_value, min_value, max_value);
+                int16_t range_size = max_value - min_value + 1; // Total number of integer values (e.g., 8 for 0–7)
+                float range_fraction = range / 100.0f; // Percent range as a fraction (e.g., 100% = 1.0)
+                
+                int16_t scaled_min, scaled_max;
+                if (range_fraction >= 1.0f) {
+                    // Full range: use min_value and max_value directly
+                    scaled_min = min_value;
+                    scaled_max = max_value;
+                } else {
+                    // Partial range: calculate scaled range centered around base_value
+                    int16_t scaled_range = round(range_size * range_fraction); // Number of values in scaled range
+                    scaled_range = max(1, scaled_range); // Ensure at least one value
+                    int16_t half_range = scaled_range / 2;
+                    scaled_min = max(min_value, base_value - half_range);
+                    scaled_max = min(max_value, base_value + half_range);
+                    // Ensure at least one value difference if scaled_min equals scaled_max
+                    if (scaled_min == scaled_max) {
+                        if (scaled_max < max_value) {
+                            scaled_max++;
+                        } else if (scaled_min > min_value) {
+                            scaled_min--;
+                        }
+                    }
+                }
+                
+                // Map potentiometer value to the scaled integer range
+                output_value = constrain(map(potentiometer_smoothed_value, dead_zone, 1024 - dead_zone, scaled_min, scaled_max), min_value, max_value);
+                Serial.print("update_parameter integer: adress=");
+                Serial.print(target_adress);
+                Serial.print(", base=");
+                Serial.print(base_value);
                 Serial.print(", smoothed=");
                 Serial.print(potentiometer_smoothed_value);
-                Serial.print(", min=");
-                Serial.print(min_value);
-                Serial.print(", max=");
-                Serial.print(max_value);
+                Serial.print(", scaled_min=");
+                Serial.print(scaled_min);
+                Serial.print(", scaled_max=");
+                Serial.print(scaled_max);
                 Serial.print(", output=");
                 Serial.println(output_value);
             } else {
@@ -193,16 +253,46 @@ bool potentiometer::update_parameter(bool alternate_flag){
             return true;
         } else {
             if (found && is_integer) {
-                // Integer parameter: map to min_value–max_value
-                output_value = constrain(map(potentiometer_smoothed_value, dead_zone, 1024 - dead_zone, min_value, max_value), min_value, max_value);
-                Serial.print("update_parameter alternate integer: adress=");
-                Serial.print(alternate_adress);
+                // Integer parameter: apply percent range to limit the number of accessible values
+                int16_t base_value = current_sysex_parameters_pointer[target_adress];
+                base_value = constrain(base_value, min_value, max_value);
+                int16_t range_size = max_value - min_value + 1; // Total number of integer values (e.g., 8 for 0–7)
+                float range_fraction = range / 100.0f; // Percent range as a fraction (e.g., 100% = 1.0)
+                
+                int16_t scaled_min, scaled_max;
+                if (range_fraction >= 1.0f) {
+                    // Full range: use min_value and max_value directly
+                    scaled_min = min_value;
+                    scaled_max = max_value;
+                } else {
+                    // Partial range: calculate scaled range centered around base_value
+                    int16_t scaled_range = round(range_size * range_fraction); // Number of values in scaled range
+                    scaled_range = max(1, scaled_range); // Ensure at least one value
+                    int16_t half_range = scaled_range / 2;
+                    scaled_min = max(min_value, base_value - half_range);
+                    scaled_max = min(max_value, base_value + half_range);
+                    // Ensure at least one value difference if scaled_min equals scaled_max
+                    if (scaled_min == scaled_max) {
+                        if (scaled_max < max_value) {
+                            scaled_max++;
+                        } else if (scaled_min > min_value) {
+                            scaled_min--;
+                        }
+                    }
+                }
+                
+                // Map potentiometer value to the scaled integer range
+                output_value = constrain(map(potentiometer_smoothed_value, dead_zone, 1024 - dead_zone, scaled_min, scaled_max), min_value, max_value);
+                Serial.print("update_parameter integer: adress=");
+                Serial.print(target_adress);
+                Serial.print(", base=");
+                Serial.print(base_value);
                 Serial.print(", smoothed=");
                 Serial.print(potentiometer_smoothed_value);
-                Serial.print(", min=");
-                Serial.print(min_value);
-                Serial.print(", max=");
-                Serial.print(max_value);
+                Serial.print(", scaled_min=");
+                Serial.print(scaled_min);
+                Serial.print(", scaled_max=");
+                Serial.print(scaled_max);
                 Serial.print(", output=");
                 Serial.println(output_value);
             } else {
