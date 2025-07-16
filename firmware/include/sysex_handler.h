@@ -52,25 +52,37 @@ void apply_audio_parameter(int adress, int value) {
         chord_pot.set_alternate(value);
         break;
       case 11:
-        chord_pot.set_alternate_range(value);
+        chord_pot.set_alternate_range_lower(value/100.0 / 100.0);
+        break;
+      case 201:
+        chord_pot.set_alternate_range_upper(value/100.0 / 100.0);
         break;
       case 12:
         harp_pot.set_alternate(value);
         break;
       case 13:
-        harp_pot.set_alternate_range(value);
+        harp_pot.set_alternate_range_lower(value/100.0 / 100.0);
+        break;
+      case 202:
+        harp_pot.set_alternate_range_upper(value/100.0 / 100.0);
         break;
       case 14:
         mod_pot.set_main(value);
         break;
       case 15:
-        mod_pot.set_main_range(value);
+        mod_pot.set_main_range_lower(value/100.0 / 100.0);
+        break;
+      case 200:
+        mod_pot.set_main_range_upper(value/100.0 / 100.0);
         break;
       case 16:
         mod_pot.set_alternate(value);
         break;
       case 17:
-        mod_pot.set_alternate_range(value);
+        mod_pot.set_alternate_range_lower(value/100.0 / 100.0);
+        break;
+      case 203:
+        mod_pot.set_alternate_range_upper(value/100.0 / 100.0);
         break;
       case 4:
         chord_pot.set_alternate_default(value);chord_pot.force_update();

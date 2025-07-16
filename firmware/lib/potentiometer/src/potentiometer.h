@@ -9,12 +9,12 @@ private:
     std::function<void(int, int)> apply_audio_parameter;
 public:
     potentiometer(int pot_pin);
-    void setup(int main_adress, float main_range, int alternate_adress, float alternate_range, int16_t *current_sysex_parameters_pointer, int alternate_initial_value, const std::function<void(int, int)> & apply_audio_parameter, int alternate_storage_adress);
+    void setup(int main_adress, float main_range_lower, int alternate_adress, float alternate_range_lower, int16_t *current_sysex_parameters_pointer, int alternate_initial_value, const std::function<void(int, int)> & apply_audio_parameter, int alternate_storage_adress);
     void set_main(int adress);
-    void set_main_range(float range);
+    void set_main_range_lower(float range);
     void set_main_range_upper(float range); // New: Set upper bound for main range
     void set_alternate(int adress);
-    void set_alternate_range(float range);
+    void set_alternate_range_lower(float range);
     void set_alternate_range_upper(float range); // New: Set upper bound for alternate range
     void set_alternate_default(int alternate_initial_value);
     void force_update();
@@ -30,10 +30,10 @@ private:
 
     // The Potentiometer target values 
     int main_adress;
-    float main_range;
+    float main_range_lower;
     float main_range_upper; // New: Upper bound for main range
     int alternate_adress;
-    float alternate_range;
+    float alternate_range_lower;
     float alternate_range_upper; // New: Upper bound for alternate range
     int alternate_storage_adress;
     int old_main_adress_value = 0;
