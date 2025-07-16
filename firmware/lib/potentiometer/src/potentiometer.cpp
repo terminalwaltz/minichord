@@ -111,7 +111,7 @@ void potentiometer::force_update() {
         Serial.print(", range=");
         Serial.print(alternate_range);
         Serial.print(", range_fraction=");
-        Serial.print(range_fraction);
+        Serial.print(alternate_range / 100.0f);
         Serial.print(", scaled_min=");
         Serial.print(scaled_min);
         Serial.print(", scaled_max=");
@@ -130,24 +130,28 @@ void potentiometer::force_update() {
         base_value = constrain(base_value, min_value, max_value);
         uint16_t min_val, max_val;
         float scaled_min, scaled_max;
-        if (base_value == 0) {
-            // Fallback: use full parameter range
-            scaled_min = min_value;
-            scaled_max = max_value;
-        } else {
-            // Scale around current value but clamp to valid range
-            scaled_min = max((float)min_value, base_value * (1.0f - alternate_range / 100.0f));
-            scaled_max = min((float)max_value, base_value * (1.0f + alternate_range / 100.0f));
-        }
+        // Use range_fraction to scale the full parameter range from min_value
+        scaled_min = min_value;
+        scaled_max = min_value + (alternate_range / 100.0f) * (max_value - min_value);
+        scaled_max = min(scaled_max, max_value); // Ensure we don't exceed max_value
         min_val = scaled_min * 100;
         max_val = scaled_max * 100;
         output_value = constrain(map(potentiometer_smoothed_value, dead_zone, 1024 - dead_zone, min_val, max_val), min_val, max_val);
+
         Serial.print("force_update float: adress=");
         Serial.print(alternate_adress);
         Serial.print(", base=");
         Serial.print(base_value);
         Serial.print(", smoothed=");
         Serial.print(potentiometer_smoothed_value);
+        Serial.print(", range=");
+        Serial.print(alternate_range);
+        Serial.print(", range_fraction=");
+        Serial.print(alternate_range / 100.0f);
+        Serial.print(", scaled_min=");
+        Serial.print(scaled_min);
+        Serial.print(", scaled_max=");
+        Serial.print(scaled_max);
         Serial.print(", min=");
         Serial.print(min_val);
         Serial.print(", max=");
@@ -269,24 +273,28 @@ bool potentiometer::update_parameter(bool alternate_flag) {
                 base_value = constrain(base_value, min_value, max_value);
                 uint16_t min_val, max_val;
                 float scaled_min, scaled_max;
-                if (base_value == 0) {
-                    // Fallback: use full parameter range
-                    scaled_min = min_value;
-                    scaled_max = max_value;
-                } else {
-                    // Scale around current value but clamp to valid range
-                    scaled_min = max((float)min_value, base_value * (1.0f - range / 100.0f));
-                    scaled_max = min((float)max_value, base_value * (1.0f + range / 100.0f));
-                }
+                // Use range_fraction to scale the full parameter range from min_value
+                scaled_min = min_value;
+                scaled_max = min_value + (range / 100.0f) * (max_value - min_value);
+                scaled_max = min(scaled_max, max_value); // Ensure we don't exceed max_value
                 min_val = scaled_min * 100;
                 max_val = scaled_max * 100;
                 output_value = constrain(map(potentiometer_smoothed_value, dead_zone, 1024 - dead_zone, min_val, max_val), min_val, max_val);
+
                 Serial.print("update_parameter main float: adress=");
                 Serial.print(main_adress);
                 Serial.print(", base=");
                 Serial.print(base_value);
                 Serial.print(", smoothed=");
                 Serial.print(potentiometer_smoothed_value);
+                Serial.print(", range=");
+                Serial.print(range);
+                Serial.print(", range_fraction=");
+                Serial.print(range / 100.0f);
+                Serial.print(", scaled_min=");
+                Serial.print(scaled_min);
+                Serial.print(", scaled_max=");
+                Serial.print(scaled_max);
                 Serial.print(", min=");
                 Serial.print(min_val);
                 Serial.print(", max=");
@@ -364,24 +372,28 @@ bool potentiometer::update_parameter(bool alternate_flag) {
                 base_value = constrain(base_value, min_value, max_value);
                 uint16_t min_val, max_val;
                 float scaled_min, scaled_max;
-                if (base_value == 0) {
-                    // Fallback: use full parameter range
-                    scaled_min = min_value;
-                    scaled_max = max_value;
-                } else {
-                    // Scale around current value but clamp to valid range
-                    scaled_min = max((float)min_value, base_value * (1.0f - range / 100.0f));
-                    scaled_max = min((float)max_value, base_value * (1.0f + range / 100.0f));
-                }
+                // Use range_fraction to scale the full parameter range from min_value
+                scaled_min = min_value;
+                scaled_max = min_value + (range / 100.0f) * (max_value - min_value);
+                scaled_max = min(scaled_max, max_value); // Ensure we don't exceed max_value
                 min_val = scaled_min * 100;
                 max_val = scaled_max * 100;
                 output_value = constrain(map(potentiometer_smoothed_value, dead_zone, 1024 - dead_zone, min_val, max_val), min_val, max_val);
+
                 Serial.print("update_parameter alternate float: adress=");
                 Serial.print(alternate_adress);
                 Serial.print(", base=");
                 Serial.print(base_value);
                 Serial.print(", smoothed=");
                 Serial.print(potentiometer_smoothed_value);
+                Serial.print(", range=");
+                Serial.print(range);
+                Serial.print(", range_fraction=");
+                Serial.print(range / 100.0f);
+                Serial.print(", scaled_min=");
+                Serial.print(scaled_min);
+                Serial.print(", scaled_max=");
+                Serial.print(scaled_max);
                 Serial.print(", min=");
                 Serial.print(min_val);
                 Serial.print(", max=");
