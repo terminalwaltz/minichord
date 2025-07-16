@@ -82,7 +82,7 @@ const uint8_t scale_intervals[7][8] = {
   {0, 2, 4, 5, 7, 9, 11, 0}, // 1: Major (Ionian)
   {0, 2, 4, 7, 9, 0, 0, 0},  // 2: Major Pentatonic (5 notes, last three unused)
   {0, 2, 3, 7, 10, 0, 0, 0}, // 3: Minor Pentatonic
-  {0, 2, 4, 5, 7, 8, 9, 11}, // 4: Diminished 6th Scale
+  {0, 2, 4, 5, 7, 8, 9, 11}, // 4: Diminished 6th Scale -- this should be removed, just wanted to test it. Need a custom scale option
   {0, 2, 3, 5, 7, 8, 10, 0}, // 5: Relative Natural Minor (shifted +3)
   {0, 2, 3, 5, 7, 8, 11, 0}, // 6: Relative Harmonic Minor (shifted +3)
   {0, 2, 3, 7, 10, 0, 0, 0}  // 7: Relative Minor Pentatonic (shifted +3)
