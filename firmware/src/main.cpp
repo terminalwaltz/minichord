@@ -139,13 +139,17 @@ int8_t mod_pot_alternate_storage = 6;
 
 // >10 and <21 are limited access, for example the potentiometer settings (we don't want a pot to control another pot sysex adress or range)
 int8_t chord_pot_alternate_control = 10;
-int8_t chord_pot_alternate_range = 11;
+int8_t chord_pot_alternate_range = 11; // Lower bound
+int8_t chord_pot_alternate_range_upper = 201; // Upper bound
 int8_t harp_pot_alternate_control = 12;
-int8_t harp_pot_alternate_range = 13;
+int8_t harp_pot_alternate_range = 13; // Lower bound
+int8_t harp_pot_alternate_range_upper = 202; // Upper bound
 int8_t mod_pot_main_control = 14;
-int8_t mod_pot_main_range = 15;
+int8_t mod_pot_main_range = 15; // Lower bound
+int8_t mod_pot_main_range_upper = 200; // Upper bound
 int8_t mod_pot_alternate_control = 16;
-int8_t mod_pot_alternate_range = 17;
+int8_t mod_pot_alternate_range = 17; // Lower bound
+int8_t mod_pot_alternate_range_upper = 203; // Upper bound
 // 21-39 are global parameters (switching logic, global reverb etc.)
 // 40-119 are harp parameters
 // 120-219 are chord parameters
@@ -736,9 +740,9 @@ void load_config(int bank_number) {
     save_config(bank_number, true); // reboot with default value
   }
   // Loading the potentiometer
-  chord_pot.setup(chord_volume_sysex, 100, current_sysex_parameters[chord_pot_alternate_control], current_sysex_parameters[chord_pot_alternate_range], current_sysex_parameters,current_sysex_parameters[chord_pot_alternate_storage],apply_audio_parameter,chord_pot_alternate_storage);
-  harp_pot.setup(harp_volume_sysex, 100, current_sysex_parameters[harp_pot_alternate_control], current_sysex_parameters[harp_pot_alternate_range], current_sysex_parameters,current_sysex_parameters[harp_pot_alternate_storage],apply_audio_parameter,harp_pot_alternate_storage);
-  mod_pot.setup(current_sysex_parameters[mod_pot_main_control], current_sysex_parameters[mod_pot_main_range], current_sysex_parameters[mod_pot_alternate_control], current_sysex_parameters[mod_pot_alternate_range], current_sysex_parameters,current_sysex_parameters[mod_pot_alternate_storage],apply_audio_parameter,mod_pot_alternate_storage);
+  chord_pot.setup(chord_volume_sysex, 100, current_sysex_parameters[chord_pot_alternate_control], current_sysex_parameters[chord_pot_alternate_range], current_sysex_parameters, current_sysex_parameters[chord_pot_alternate_storage], apply_audio_parameter, chord_pot_alternate_storage);
+  harp_pot.setup(harp_volume_sysex, 100, current_sysex_parameters[harp_pot_alternate_control], current_sysex_parameters[harp_pot_alternate_range], current_sysex_parameters, current_sysex_parameters[harp_pot_alternate_storage], apply_audio_parameter, harp_pot_alternate_storage);
+  mod_pot.setup(current_sysex_parameters[mod_pot_main_control], current_sysex_parameters[mod_pot_main_range], current_sysex_parameters[mod_pot_alternate_control], current_sysex_parameters[mod_pot_alternate_range], current_sysex_parameters, current_sysex_parameters[mod_pot_alternate_storage], apply_audio_parameter, mod_pot_alternate_storage);
   Serial.println("pot setup done");
   for (int i = 1; i < parameter_size; i++) {
     apply_audio_parameter(i, current_sysex_parameters[i]);
