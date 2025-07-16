@@ -83,9 +83,9 @@ const uint8_t scale_intervals[7][8] = {
   {0, 2, 4, 7, 9, 0, 0, 0},  // 2: Major Pentatonic (5 notes, last three unused)
   {0, 2, 3, 7, 10, 0, 0, 0}, // 3: Minor Pentatonic
   {0, 2, 4, 5, 7, 8, 9, 11}, // 4: Diminished 6th Scale
-  {-3, -1, 0, 2, 4, 5, 7, 0}, // 5: Relative Natural Minor
-  {-3, -1, 0, 2, 4, 5, 8, 0}, // 6: Relative Harmonic Minor
-  {-3, -1, 0, 4, 7, 0, 0, 0}  // 7: Relative Minor Pentatonic
+  {0, 2, 3, 5, 7, 8, 10, 3}, // 5: Relative Natural Minor (shifted +3)
+  {0, 2, 3, 5, 7, 8, 11, 3}, // 6: Relative Harmonic Minor (shifted +3)
+  {0, 2, 3, 7, 10, 0, 0, 0}  // 7: Relative Minor Pentatonic (shifted +3)
 };
 const uint8_t scale_lengths[7] = {7, 5, 5, 8, 7, 7, 5}; // Number of notes in each scale
 
@@ -599,12 +599,17 @@ uint8_t calculate_note_harp(uint8_t string, bool slashed, bool sharp) {
     // Scalar harp mode: map strings to the selected scale in the current key
     uint8_t scale_index = scalar_harp_selection - 1; // Adjust for 0-based array indexing
     uint8_t scale_length = scale_lengths[scale_index]; // Number of notes in the selected scale
-    uint8_t octave = string / scale_length; // Determine the octave
+    uint8_t octave = (string / scale_length) > 0 ? (string / scale_length) - 1 : 0; // Drop one octave, prevent negative
     uint8_t scale_degree = string % scale_length; // Map string to a scale degree
     uint8_t root_note = key_offsets[key_signature_selection]; // Root note offset for the selected key
+    // Adjust root_note for relative minor scales (scalar_harp_selection 5, 6, 7)
+    if (scalar_harp_selection >= 5) { // Would like a better filter here
+        root_note = (root_note - 3) % 12; // Shift down 3 semitones for relative minor
+        if (root_note > 127) root_note += 12; // Handle underflow in uint8_t
+    }
     uint8_t note = root_note + scale_intervals[scale_index][scale_degree] + (octave * 12);
-    return note;
-  } else if (chromatic_harp_mode) {
+    return note + 12; // Keep +12 to avoid edge case problems in key of C
+} else if (chromatic_harp_mode) {
     // Chromatic mode: existing behavior
     return string + 24; // Chromatic notes starting from C2
   } else {
