@@ -78,16 +78,17 @@ const int8_t flat_notes[6][6] = { // Notes affected by flats in each key, in har
 
 uint8_t scalar_harp_selection = 0; // Selected mode: 0=Chord-based (default), 1=Major, 2=Major Pentatonic, 3=Minor Pentatonic, 4=Diminished 6th Scale, 5=Relative Natural Minor, 6=Relative Harmonic Minor, 7=Relative Minor Pentatonic
 // Scale intervals (semitones from root note), indexed from 1
-const uint8_t scale_intervals[7][8] = {
+const uint8_t scale_intervals[8][8] = {
   {0, 2, 4, 5, 7, 9, 11, 0}, // 1: Major (Ionian)
   {0, 2, 4, 7, 9, 0, 0, 0},  // 2: Major Pentatonic (5 notes, last three unused)
   {0, 2, 3, 7, 10, 0, 0, 0}, // 3: Minor Pentatonic
   {0, 2, 4, 5, 7, 8, 9, 11}, // 4: Diminished 6th Scale
   {0, 2, 3, 5, 7, 8, 10, 0}, // 5: Relative Natural Minor (shifted +3)
   {0, 2, 3, 5, 7, 8, 11, 0}, // 6: Relative Harmonic Minor (shifted +3)
-  {0, 2, 3, 7, 10, 0, 0, 0}  // 7: Relative Minor Pentatonic (shifted +3)
+  {0, 2, 3, 7, 10, 0, 0, 0},  // 7: Relative Minor Pentatonic (shifted +3)
+  {0, 0, 0, 0, 0, 0, 0, 0} // 8: Scale Per Chord Mode
 };
-const uint8_t scale_lengths[7] = {7, 5, 5, 8, 7, 7, 5}; // Number of notes in each scale
+const uint8_t scale_lengths[8] = {7, 5, 5, 8, 7, 7, 5, 7}; // Number of notes in each scale
 
 // Define chord-specific scale intervals, updated for Barry Harris Diminished 6th scale
 const uint8_t chord_scale_intervals[10][8] = {
@@ -99,8 +100,8 @@ const uint8_t chord_scale_intervals[10][8] = {
   {0, 1, 3, 4, 6, 7, 9, 10}, // 5: Octatonic (Half-Whole) for diminished
   {0, 2, 4, 6, 8, 10, 0, 0}, // 6: Whole Tone for augmented
   {0, 2, 4, 5, 7, 8, 9, 11}, // 7: Diminished 6th (1, 2, 3, 4, 5, b6, 6, 7) for major sixth (Barry Harris)
-  {0, 2, 4, 5, 7, 8, 9, 11}, // 8: Diminished 6th (1, 2, 3, 4, 5, b6, 6, 7) for minor sixth (Barry Harris)
-  {0, 2, 4, 5, 7, 8, 9, 11}  // 9: Diminished 6th (1, 2, 3, 4, 5, b6, 6, 7) for full diminished (Barry Harris)
+  {0, 2, 3, 5, 7, 8, 9, 11}, // 8: Diminished 6th Minor (1, 2, b3, 4, 5, b6, 6, 7) for minor sixth (Barry Harris)
+  {2, 4, 5, 7, 8, 9, 11, 0}  // 9: Offset Diminished 6th (1, 2, 3, 4, 5, b6, 6, 7) for full diminished (Barry Harris)
 };
 
 const uint8_t chord_scale_lengths[10] = {7, 7, 7, 7, 7, 8, 6, 8, 8, 8}; // Number of notes in each scale
@@ -628,7 +629,7 @@ uint8_t calculate_note_harp(uint8_t string, bool slashed, bool sharp) {
     }
     uint8_t note = root_note + scale_intervals[scale_index][scale_degree] + (octave * 12);
     return note + 12; // Keep +12 to avoid edge case problems in key of C
-  } else if (scalar_harp_selection == 7) {
+  } else if (scalar_harp_selection == 8) {
     // Chord scales mode: use scale corresponding to the current chord type
     uint8_t scale_index;
     if (current_chord == &major) {
