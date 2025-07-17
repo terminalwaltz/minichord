@@ -41,7 +41,9 @@ static const ParameterInfo parameter_lookup[] = {
     { 99, 1, 0, 4 }, // octave change
     { 40, 1, 0, 6 }, // harp shuffling
     { 98, 1, 0, 1 }, // chromatic mode
-    { 36, 1, 0, 7 }, // scalar harp mode
+    { 36, 1, 0, 8 }, // scalar harp mode
+    { 240, 1, 0, 65535 }, // custom scale intervals 1-4
+    { 241, 1, 0, 65535 }, // custom scale intervals 5-8 and length
     { 41, 0, 0, 1 }, // amplitude
     { 42, 1, 0, 11 }, // waveform
     { 43, 1, 0, 5000 }, // attack

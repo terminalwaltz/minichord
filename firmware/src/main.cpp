@@ -78,16 +78,23 @@ const int8_t flat_notes[6][6] = { // Notes affected by flats in each key, in har
 
 uint8_t scalar_harp_selection = 0; // Selected mode: 0=Chord-based (default), 1=Major, 2=Major Pentatonic, 3=Minor Pentatonic, 4=Diminished 6th Scale, 5=Relative Natural Minor, 6=Relative Harmonic Minor, 7=Relative Minor Pentatonic
 // Scale intervals (semitones from root note), indexed from 1
-const uint8_t scale_intervals[7][8] = {
+uint8_t scale_intervals[8][8] = {
   {0, 2, 4, 5, 7, 9, 11, 0}, // 1: Major (Ionian)
   {0, 2, 4, 7, 9, 0, 0, 0},  // 2: Major Pentatonic (5 notes, last three unused)
   {0, 2, 3, 7, 10, 0, 0, 0}, // 3: Minor Pentatonic
   {0, 2, 4, 5, 7, 8, 9, 11}, // 4: Diminished 6th Scale -- this should be removed, just wanted to test it. Need a custom scale option
   {0, 2, 3, 5, 7, 8, 10, 0}, // 5: Relative Natural Minor (shifted +3)
   {0, 2, 3, 5, 7, 8, 11, 0}, // 6: Relative Harmonic Minor (shifted +3)
-  {0, 2, 3, 7, 10, 0, 0, 0}  // 7: Relative Minor Pentatonic (shifted +3)
+  {0, 2, 3, 7, 10, 0, 0, 0},  // 7: Relative Minor Pentatonic (shifted +3)
+  {0, 2, 4, 5, 7, 9, 11, 0}  // Custom scale (default major)
+
 };
-const uint8_t scale_lengths[7] = {7, 5, 5, 8, 7, 7, 5}; // Number of notes in each scale
+// Scale lengths (number of notes per scale)
+uint8_t scale_lengths[8] = {7, 5, 5, 8, 7, 7, 5, 7}; // Custom scale at index 7
+
+// Variables for custom scale
+uint8_t custom_scale[8] = {0, 2, 4, 5, 7, 9, 11, 0}; // Default major scale
+uint8_t custom_scale_length = 7; // Default length
 
 float c_frequency = 130.81;                      // for C3
 uint8_t chord_octave_change=4;

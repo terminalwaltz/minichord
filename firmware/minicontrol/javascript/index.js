@@ -11,6 +11,26 @@ function map_value(value, in_min, in_max, out_min, out_max) {
   return (value - in_min) * (out_max - out_min) / (in_max - in_min) + Number(out_min);
 }
 
+function sendCustomScale() {
+    const intervals1_4 = document.getElementById('custom_scale_intervals').value.split(',').map(Number);
+    const intervals5_8 = document.getElementById('custom_scale_intervals_2').value.split(',').map(Number);
+    const length = parseInt(document.getElementById('custom_scale_length').value);
+
+    if (intervals1_4.length !== 4 || intervals5_8.length !== 4 ||
+        intervals1_4.some(i => i < 0 || i > 12 || isNaN(i)) ||
+        intervals5_8.some(i => i < 0 || i > 12 || isNaN(i)) ||
+        length < 1 || length > 8 || isNaN(length)) {
+        alert('Invalid input: Enter exactly 4 intervals (0-12) for Intervals 1-4 and 5-8, and a length between 1-8.');
+        return;
+    }
+
+    const value1 = (intervals1_4[0] << 12) | (intervals1_4[1] << 8) | (intervals1_4[2] << 4) | intervals1_4[3];
+    updateParameter(240, value1);
+
+    const value2 = (length << 13) | (intervals5_8[0] << 12) | (intervals5_8[1] << 8) | (intervals5_8[2] << 4) | intervals5_8[3];
+    updateParameter(241, value2);
+}
+
 //-->>INTERFACE HANDLER
 //Slider Handler
 function handlechange(event) {

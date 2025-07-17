@@ -1,4 +1,7 @@
-void apply_audio_parameter(int adress, int value) {
+#ifndef SYSEX_HANDLER_H
+#define SYSEX_HANDLER_H
+
+void apply_audio_parameter(uint8_t adress, int16_t value) {
     switch(adress){
       case 20:
         bank_led_hue=value; set_led_color(bank_led_hue, 1.0, 1-led_attenuation);
@@ -102,6 +105,12 @@ void apply_audio_parameter(int adress, int value) {
         break;
       case 36:
         scalar_harp_selection=value;
+        break;
+      case 240:
+        custom_scale[0] = (value >> 12) & 0xF; custom_scale[1] = (value >> 8) & 0xF; custom_scale[2] = (value >> 4) & 0xF; custom_scale[3] = value & 0xF; for (int i = 0; i < 4; i++) scale_intervals[7][i] = custom_scale[i];
+        break;
+      case 241:
+        custom_scale[4] = (value >> 12) & 0xF; custom_scale[5] = (value >> 8) & 0xF; custom_scale[6] = (value >> 4) & 0xF; custom_scale[7] = value & 0xF; custom_scale_length = (value >> 13) & 0x7; for (int i = 4; i < 8; i++) scale_intervals[7][i] = custom_scale[i]; scale_lengths[7] = custom_scale_length;
         break;
       case 41:
         for (int i=0;i<12;i++){
@@ -702,5 +711,9 @@ void apply_audio_parameter(int adress, int value) {
       case 197:
         chords_amplifier.gain(value/100.0);
         break;
-  }
+      default:
+        break;
+    }
 }
+
+#endif
