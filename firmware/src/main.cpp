@@ -101,7 +101,7 @@ const uint8_t chord_scale_intervals[10][8] = {
   {0, 2, 4, 6, 8, 10, 0, 0}, // 6: Whole Tone for augmented
   {0, 2, 4, 5, 7, 8, 9, 11}, // 7: Diminished 6th (1, 2, 3, 4, 5, b6, 6, 7) for major sixth (Barry Harris)
   {0, 2, 3, 5, 7, 8, 9, 11}, // 8: Diminished 6th Minor (1, 2, b3, 4, 5, b6, 6, 7) for minor sixth (Barry Harris)
-  {2, 4, 5, 7, 8, 9, 11, 0}  // 9: Offset Diminished 6th (1, 2, 3, 4, 5, b6, 6, 7) for full diminished (Barry Harris)
+  {2, 4, 5, 7, 8, 9, 11, 12}  // 9: Offset Diminished 6th (1, 2, 3, 4, 5, b6, 6, 7) for full diminished (Barry Harris)
 };
 
 const uint8_t chord_scale_lengths[10] = {7, 7, 7, 7, 7, 8, 6, 8, 8, 8}; // Number of notes in each scale
