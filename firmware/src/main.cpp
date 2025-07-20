@@ -648,170 +648,109 @@ uint8_t calculate_note_harp(uint8_t string, bool slashed, bool sharp) {
 }
 
 void update_harp_notes(bool slashed, bool sharp) {
-  static uint8_t new_harp_notes[12];
-  static bool first_run = true;
-  static uint8_t last_root_note = 255;
-  static uint8_t last_scale_index = 255;
-  static uint8_t chord_press_count = 0;
-
-  // Determine the current chord's scale
-  uint8_t scale_index;
-  if (current_chord == &major) scale_index = 0;
-  else if (current_chord == &maj_seventh) scale_index = 1;
-  else if (current_chord == &minor) scale_index = 2;
-  else if (current_chord == &seventh) scale_index = 3;
-  else if (current_chord == &min_seventh) scale_index = 4;
-  else if (current_chord == &dim) scale_index = 5;
-  else if (current_chord == &aug) scale_index = 6;
-  else if (current_chord == &maj_sixth) scale_index = 7;
-  else if (current_chord == &min_sixth) scale_index = 8;
-  else if (current_chord == &full_dim) scale_index = 9;
-  else scale_index = 0;
-
-  // Calculate root note
-  uint8_t root_note;
-  if (slashed && note_slash_level == 0) {
-    root_note = get_root_button(key_signature_selection, chord_frame_shift, slash_value);
+    uint8_t scale_index;
+    uint8_t scale_length;
+    if (current_chord == &major) scale_index = 0;
+    else if (current_chord == &maj_seventh) scale_index = 1;
+    else if (current_chord == &minor) scale_index = 2;
+    else if (current_chord == &seventh) scale_index = 3;
+    else if (current_chord == &min_seventh) scale_index = 4;
+    else if (current_chord == &dim) scale_index = 5;
+    else if (current_chord == &aug) scale_index = 6;
+    else if (current_chord == &maj_sixth) scale_index = 7;
+    else if (current_chord == &min_sixth) scale_index = 8;
+    else if (current_chord == &full_dim) scale_index = 9;
+    else scale_index = 0;
+    scale_length = chord_scale_lengths[scale_index];
+    uint8_t root_note = slashed ? get_root_button(key_signature_selection, chord_frame_shift, slash_value) : get_root_button(key_signature_selection, chord_frame_shift, fundamental);
     root_note += sharp * (flat_button_modifier ? -1 : 1);
-  } else {
-    root_note = get_root_button(key_signature_selection, chord_frame_shift, fundamental);
-    root_note += sharp * (flat_button_modifier ? -1 : 1);
-  }
 
-  // Update chord press count
-  if (root_note != last_root_note || scale_index != last_scale_index) {
-    chord_press_count = 1;
-  } else {
-    chord_press_count++;
-  }
-  last_root_note = root_note;
-  last_scale_index = scale_index;
-
-  // Generate scale notes
-  uint8_t scale_notes[12];
-  int note_count = 0;
-  uint8_t scale_length = chord_scale_lengths[scale_index];
-  for (int octave = 0; octave < 2 && note_count < 12; octave++) {
-    for (int i = 0; i < scale_length && note_count < 12; i++) {
-      uint8_t note = root_note + chord_scale_intervals[scale_index][i] + (octave * 12);
-      if (note > 28) break; // Limit to valid range
-      scale_notes[note_count] = note;
-      note_count++;
+    // Generate scale notes for up to three octaves to cover 0–35
+    uint8_t scale_notes[24];
+    int note_count = 0;
+    for (int octave = 0; octave < 3 && note_count < 24; octave++) {
+        for (int i = 0; i < scale_length && note_count < 24; i++) {
+            uint8_t note = root_note + chord_scale_intervals[scale_index][i] + (octave * 12);
+            if (note >= 0 && note <= 35) {
+                scale_notes[note_count] = note;
+                note_count++;
+            }
+        }
     }
-  }
 
-  // Initialize on first run
-  if (first_run) {
-    for (int i = 0; i < 12; i++) {
-      uint8_t octave = i / scale_length;
-      uint8_t scale_degree = i % scale_length;
-      uint8_t note = root_note + chord_scale_intervals[scale_index][scale_degree] + (octave * 12);
-      previous_harp_notes[i] = note <= 28 ? note : root_note;
+    // Debug: Print scale notes
+    Serial.print("Scale notes: ");
+    for (int i = 0; i < note_count; i++) {
+        Serial.print(scale_notes[i]);
+        Serial.print(" ");
     }
-    first_run = false;
-    Serial.println("Initialized harp notes");
-  }
+    Serial.println();
 
-  // Voice leading logic
-  if (voice_leading) {
+    // Initialize assignments
     bool assigned[12] = {false};
-    uint8_t temp_scale_notes[12];
-    memcpy(temp_scale_notes, scale_notes, sizeof(scale_notes));
+    uint8_t new_harp_notes[12];
 
-    // First pass: Assign exact matches
+    // Step 1: Lock common tones for held or active strings
     for (int i = 0; i < 12; i++) {
-      new_harp_notes[i] = 0;
-      if (previous_harp_notes[i] != 0) {
-        uint8_t prev_note = previous_harp_notes[i];
-        for (int j = 0; j < note_count; j++) {
-          if (temp_scale_notes[j] != 255 && temp_scale_notes[j] == prev_note) {
-            new_harp_notes[i] = prev_note;
+        if (harp_started_notes[i] != 0 || string_enveloppe_array[i]->isSustain()) {
+            for (int j = 0; j < note_count; j++) {
+                if (scale_notes[j] == current_harp_notes[i]) {
+                    new_harp_notes[i] = scale_notes[j];
+                    assigned[i] = true;
+                    Serial.print("Locked string ");
+                    Serial.print(i);
+                    Serial.print(": ");
+                    Serial.print(scale_notes[j]);
+                    Serial.println(" (common tone)");
+                    break;
+                }
+            }
+        }
+    }
+
+    // Step 2: Assign non-common tones to closest scale note, relaxing ascending order for high strings
+    for (int i = 0; i < 12; i++) {
+        if (!assigned[i]) {
+            int min_distance = 127;
+            int best_note = scale_notes[0];
+            for (int j = 0; j < note_count; j++) {
+                // Relax ascending order for string 11 to allow closer notes
+                if (i == 11 && i > 0 && assigned[i-1]) {
+                    // Allow notes within 4 semitones below previous string if closer
+                    if (scale_notes[j] < new_harp_notes[i-1] && abs((int)scale_notes[j] - (int)new_harp_notes[i-1]) > 4) {
+                        continue;
+                    }
+                } else if (i > 0 && assigned[i-1] && scale_notes[j] <= new_harp_notes[i-1]) {
+                    // Strict ascending order for other strings
+                    continue;
+                }
+                int distance = abs((int)scale_notes[j] - (int)previous_harp_notes[i]);
+                if (distance < min_distance) {
+                    min_distance = distance;
+                    best_note = scale_notes[j];
+                }
+            }
+            new_harp_notes[i] = best_note;
             assigned[i] = true;
-            temp_scale_notes[j] = 255;
-            Serial.print("Locked string ");
+            Serial.print("Assigned string ");
             Serial.print(i);
             Serial.print(": ");
-            Serial.print(new_harp_notes[i]);
-            Serial.println(" (exact match)");
-            break;
-          }
+            Serial.print(best_note);
+            Serial.print(" (closest to ");
+            Serial.print(previous_harp_notes[i]);
+            Serial.println(")");
         }
-      }
     }
 
-    // Second pass: Assign closest notes for remaining strings
+    // Step 3: Update current_harp_notes and previous_harp_notes
     for (int i = 0; i < 12; i++) {
-      if (!assigned[i] && previous_harp_notes[i] != 0) {
-        uint8_t prev_note = previous_harp_notes[i];
-        int min_distance = 128;
-        int best_note_idx = -1;
-        for (int j = 0; j < note_count; j++) {
-          if (temp_scale_notes[j] != 255) {
-            int distance = abs((int)temp_scale_notes[j] - (int)prev_note);
-            if (distance < min_distance) {
-              min_distance = distance;
-              best_note_idx = j;
-            }
-          }
-        }
-        if (best_note_idx != -1) {
-          new_harp_notes[i] = temp_scale_notes[best_note_idx];
-          temp_scale_notes[best_note_idx] = 255;
-          assigned[i] = true;
-          Serial.print("Assigned string ");
-          Serial.print(i);
-          Serial.print(": ");
-          Serial.print(new_harp_notes[i]);
-          Serial.print(" (closest to ");
-          Serial.print(prev_note);
-          Serial.println(")");
-        }
-      }
+        current_harp_notes[i] = new_harp_notes[i];
+        previous_harp_notes[i] = current_harp_notes[i];
+        Serial.print("String ");
+        Serial.print(i);
+        Serial.print(": ");
+        Serial.println(current_harp_notes[i]);
     }
-
-    // Third pass: Assign any remaining unassigned strings
-    int scale_idx = 0;
-    for (int i = 0; i < 12; i++) {
-      if (!assigned[i]) {
-        while (scale_idx < note_count && temp_scale_notes[scale_idx] == 255) {
-          scale_idx++;
-        }
-        if (scale_idx < note_count) {
-          new_harp_notes[i] = temp_scale_notes[scale_idx];
-          temp_scale_notes[scale_idx] = 255;
-          assigned[i] = true;
-          Serial.print("Assigned free string ");
-          Serial.print(i);
-          Serial.print(": ");
-          Serial.print(new_harp_notes[i]);
-          Serial.println();
-          scale_idx++;
-        } else {
-          new_harp_notes[i] = root_note; // Fallback to root note
-        }
-      }
-    }
-  } else {
-    // Standard scale assignment
-    for (int i = 0; i < 12; i++) {
-      uint8_t octave = i / scale_length;
-      uint8_t scale_degree = i % scale_length;
-      uint8_t note = root_note + chord_scale_intervals[scale_index][scale_degree] + (octave * 12);
-      new_harp_notes[i] = note <= 28 ? note : root_note;
-    }
-    Serial.println("Reset to standard scale");
-  }
-
-  // Update global arrays
-  for (int i = 0; i < 12; i++) {
-    previous_harp_notes[i] = new_harp_notes[i];
-    current_harp_notes[i] = new_harp_notes[i];
-    Serial.print("String ");
-    Serial.print(i);
-    Serial.print(": ");
-    Serial.print(new_harp_notes[i]);
-    Serial.println();
-  }
 }
 
 //-->>RYTHM MODE UTILITIES
@@ -1291,32 +1230,13 @@ void loop() {
     for (int octave = 0; octave < 3 && note_count < 24; octave++) {
         for (int i = 0; i < scale_length && note_count < 24; i++) {
             uint8_t note = root_note + chord_scale_intervals[scale_index][i] + (octave * 12);
-            scale_notes[note_count] = note; // Store all notes, even if > 28
+            scale_notes[note_count] = note;
             note_count++;
         }
     }
     // Assign notes sequentially to harp strings
     for (int i = 0; i < 12; i++) {
-        if (i < note_count && scale_notes[i] <= 28) {
-            current_harp_notes[i] = scale_notes[i];
-        } else {
-            // Continue the scale sequence in the next octave
-            int scale_degree = i % scale_length;
-            int octave = i / scale_length;
-            uint8_t note = root_note + chord_scale_intervals[scale_index][scale_degree] + (octave * 12);
-            if (note > 28) {
-                // Wrap to next scale degree in a lower octave to avoid repetition
-                note = scale_notes[(i % note_count) % scale_length];
-                if (note == current_harp_notes[0] || note == current_harp_notes[i - 1]) {
-                    // Avoid repeating root or previous note
-                    note = scale_notes[((i % note_count) + 1) % scale_length] + 12 * (octave - 1);
-                    if (note > 28) {
-                        note = scale_notes[(i % note_count) % scale_length]; // Fallback
-                    }
-                }
-            }
-            current_harp_notes[i] = note;
-        }
+        current_harp_notes[i] = scale_notes[i];
         previous_harp_notes[i] = current_harp_notes[i]; // Update for voice leading
         Serial.print("String ");
         Serial.print(i);
