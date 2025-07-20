@@ -1240,63 +1240,113 @@ void loop() {
     }
     // Handle double-press reset for scalar harp mode 8
     if (consecutive_presses >= 2 && scalar_harp_selection == 8 && current_line >= 0) {
-        Serial.println("Double press detected, resetting harp to chord scale");
-        // Determine chord type and scale
-        bool button_maj = chord_matrix_array[1 + current_line * 3].read_value();
-        bool button_min = chord_matrix_array[2 + current_line * 3].read_value();
-        bool button_seventh = chord_matrix_array[3 + current_line * 3].read_value();
-        uint8_t scale_index;
-        uint8_t scale_length;
-        if (button_maj && !button_min && !button_seventh) {
-            current_chord = barry_harris_mode ? &maj_sixth : &major;
-            scale_index = 0; // Major scale
-            scale_length = chord_scale_lengths[0]; // 7
-        } else if (!button_maj && button_min && !button_seventh) {
-            current_chord = barry_harris_mode ? &min_sixth : &minor;
-            scale_index = 2; // Natural Minor
-            scale_length = chord_scale_lengths[2]; // 7
-        } else if (!button_maj && !button_min && button_seventh) {
-            current_chord = &seventh;
-            scale_index = 3; // Mixolydian
-            scale_length = chord_scale_lengths[3]; // 7
-        } else if (button_maj && !button_min && button_seventh) {
-            current_chord = &maj_seventh;
-            scale_index = 0; // Major scale
-            scale_length = chord_scale_lengths[0]; // 7
-        } else if (!button_maj && button_min && button_seventh) {
-            current_chord = &min_seventh;
-            scale_index = 2; // Natural Minor
-            scale_length = chord_scale_lengths[2]; // 7
-        } else if (button_maj && button_min && !button_seventh) {
-            current_chord = barry_harris_mode ? &full_dim : &dim;
-            scale_index = 5; // Octatonic
-            scale_length = chord_scale_lengths[5]; // 8
-        } else if (button_maj && button_min && button_seventh) {
-            current_chord = &aug;
-            scale_index = 6; // Whole Tone
-            scale_length = chord_scale_lengths[6]; // 6
-        } else {
-            scale_index = 0; // Default to Major
-            scale_length = chord_scale_lengths[0]; // 7
-        }
-        // Calculate root note
-        uint8_t root_note = slash_chord ? get_root_button(key_signature_selection, chord_frame_shift, slash_value) : get_root_button(key_signature_selection, chord_frame_shift, current_line);
-        root_note += sharp_active * (flat_button_modifier ? -1 : 1);
-        // Assign scale notes to harp strings
-        for (int i = 0; i < 12; i++) {
-            uint8_t octave = i / scale_length;
-            uint8_t scale_degree = i % scale_length;
-            uint8_t note = root_note + chord_scale_intervals[scale_index][scale_degree] + (octave * 12);
-            current_harp_notes[i] = max(9, min(28, note));
-            Serial.print("String ");
-            Serial.print(i);
-            Serial.print(": MIDI note ");
-            Serial.println(current_harp_notes[i]);
-        }
-        harp_notes_updated = true;
-        consecutive_presses = 0;
-        last_chord_button = -1;
+    Serial.println("Double press detected, resetting harp to chord scale");
+    // Determine chord type and scale
+    bool button_maj = chord_matrix_array[1 + current_line * 3].read_value();
+    bool button_min = chord_matrix_array[2 + current_line * 3].read_value();
+    bool button_seventh = chord_matrix_array[3 + current_line * 3].read_value();
+    uint8_t scale_index;
+    uint8_t scale_length;
+    if (button_maj && !button_min && !button_seventh) {
+        current_chord = barry_harris_mode ? &maj_sixth : &major;
+        scale_index = barry_harris_mode ? 7 : 0;
+        scale_length = chord_scale_lengths[scale_index];
+    } else if (!button_maj && button_min && !button_seventh) {
+        current_chord = barry_harris_mode ? &min_sixth : &minor;
+        scale_index = barry_harris_mode ? 8 : 2;
+        scale_length = chord_scale_lengths[scale_index];
+    } else if (!button_maj && !button_min && button_seventh) {
+        current_chord = &seventh;
+        scale_index = 3;
+        scale_length = chord_scale_lengths[scale_index];
+    } else if (button_maj && !button_min && button_seventh) {
+        current_chord = &maj_seventh;
+        scale_index = 1;
+        scale_length = chord_scale_lengths[scale_index];
+    } else if (!button_maj && button_min && button_seventh) {
+        current_chord = &min_seventh;
+        scale_index = 4;
+        scale_length = chord_scale_lengths[scale_index];
+    } else if (button_maj && button_min && !button_seventh) {
+        current_chord = barry_harris_mode ? &full_dim : &dim;
+        scale_index = barry_harris_mode ? 9 : 5;
+        scale_length = chord_scale_lengths[scale_index];
+    } else if (button_maj && button_min && button_seventh) {
+        current_chord = &aug;
+        scale_index = 6;
+        scale_length = chord_scale_lengths[scale_index];
+    } else {
+        current_chord = &major;
+        scale_index = 0;
+        scale_length = chord_scale_lengths[0];
     }
+    // Calculate root note
+    uint8_t root_note = slash_chord ? get_root_button(key_signature_selection, chord_frame_shift, slash_value) : get_root_button(key_signature_selection, chord_frame_shift, current_line);
+    root_note += sharp_active * (flat_button_modifier ? -1 : 1);
+    Serial.print("Root note: ");
+    Serial.println(root_note);
+    // Generate sequential scale notes across octaves
+    uint8_t scale_notes[24];
+    int note_count = 0;
+    for (int octave = 0; octave < 3 && note_count < 24; octave++) {
+        for (int i = 0; i < scale_length && note_count < 24; i++) {
+            uint8_t note = root_note + chord_scale_intervals[scale_index][i] + (octave * 12);
+            scale_notes[note_count] = note; // Store all notes, even if > 28
+            note_count++;
+        }
+    }
+    // Assign notes sequentially to harp strings
+    for (int i = 0; i < 12; i++) {
+        if (i < note_count && scale_notes[i] <= 28) {
+            current_harp_notes[i] = scale_notes[i];
+        } else {
+            // Continue the scale sequence in the next octave
+            int scale_degree = i % scale_length;
+            int octave = i / scale_length;
+            uint8_t note = root_note + chord_scale_intervals[scale_index][scale_degree] + (octave * 12);
+            if (note > 28) {
+                // Wrap to next scale degree in a lower octave to avoid repetition
+                note = scale_notes[(i % note_count) % scale_length];
+                if (note == current_harp_notes[0] || note == current_harp_notes[i - 1]) {
+                    // Avoid repeating root or previous note
+                    note = scale_notes[((i % note_count) + 1) % scale_length] + 12 * (octave - 1);
+                    if (note > 28) {
+                        note = scale_notes[(i % note_count) % scale_length]; // Fallback
+                    }
+                }
+            }
+            current_harp_notes[i] = note;
+        }
+        previous_harp_notes[i] = current_harp_notes[i]; // Update for voice leading
+        Serial.print("String ");
+        Serial.print(i);
+        Serial.print(": scale_degree=");
+        Serial.print(i % scale_length);
+        Serial.print(", interval=");
+        Serial.print(chord_scale_intervals[scale_index][i % scale_length]);
+        Serial.print(", octave=");
+        Serial.print(i / scale_length);
+        Serial.print(", MIDI note=");
+        Serial.println(current_harp_notes[i]);
+    }
+    // Update active harp notes if strings are held
+    if (change_held_strings) {
+        for (int i = 0; i < 12; i++) {
+            if (harp_started_notes[i] != 0) {
+                usbMIDI.sendNoteOff(harp_started_notes[i], harp_release_velocity, 1, harp_port);
+                harp_started_notes[i] = 0;
+                usbMIDI.sendNoteOn(midi_base_note_transposed + current_harp_notes[i], harp_attack_velocity, 1, harp_port);
+                harp_started_notes[i] = midi_base_note_transposed + current_harp_notes[i];
+            }
+            if (string_enveloppe_array[i]->isSustain()) {
+                set_harp_voice_frequency(i, current_harp_notes[i]);
+            }
+        }
+    }
+    harp_notes_updated = true;
+    consecutive_presses = 0;
+    last_chord_button = -1;
+}
     // Reset press counter if no buttons active for 500ms
     if (time_since_last_press > 500 && !chord_matrix_array[last_chord_button].read_value()) {
         consecutive_presses = 0;
