@@ -91,25 +91,25 @@ const uint8_t scale_intervals[8][8] = {
 const uint8_t scale_lengths[8] = {7, 5, 5, 8, 7, 7, 5, 7}; // Number of notes in each scale
 
 // Define chord-specific scale intervals, updated for Barry Harris Diminished 6th scale and pentatonic scales
-const uint8_t chord_scale_intervals[14][8] = {
-  {0, 2, 4, 7, 9, 0, 0, 0},  // 0: Major Pentatonic for major chord
-  {0, 2, 4, 6, 9, 0, 0, 0},  // 1: Lydian Pentatonic for major seventh (approximated, using major pentatonic for simplicity)
-  {0, 3, 5, 7, 10, 0, 0, 0}, // 2: Minor Pentatonic for minor
-  {0, 2, 4, 7, 10, 0, 0, 0}, // 3: Mixolydian Pentatonic for seventh (dominant)
-  {0, 3, 5, 7, 10, 0, 0, 0}, // 4: Minor Pentatonic for minor seventh (same as minor for simplicity)
-  {0, 1, 3, 4, 6, 7, 9, 10}, // 5: Octatonic (Half-Whole) for diminished
-  {0, 2, 4, 6, 8, 10, 0, 0}, // 6: Whole Tone for augmented
-  {0, 2, 4, 5, 7, 8, 9, 11}, // 7: Diminished 6th (1, 2, 3, 4, 5, b6, 6, 7) for major sixth (Barry Harris)
-  {0, 2, 3, 5, 7, 8, 9, 11}, // 8: Diminished 6th Minor (1, 2, b3, 4, 5, b6, 6, 7) for minor sixth (Barry Harris)
-  {2, 4, 5, 7, 8, 9, 11, 12}, // 9: Offset Diminished 6th (1, 2, 3, 4, 5, b6, 6, 7) for full diminished (Barry Harris)
-  {0, 2, 4, 5, 7, 9, 11, 0}, // 10: Major (Ionian) for major chord (original mode 8)
-  {0, 2, 4, 6, 7, 9, 11, 0}, // 11: Lydian for major seventh (original mode 8)
-  {0, 2, 3, 5, 7, 8, 10, 0}, // 12: Natural Minor (Aeolian) for minor (original mode 8)
-  {0, 2, 4, 5, 7, 9, 10, 0}  // 13: Mixolydian for seventh (dominant) (original mode 8)
+const uint8_t chord_scale_intervals[15][8] = {
+  {0, 2, 4, 7, 9, 0, 0, 0},  // 0: Major Pentatonic for major chord (mode 9)
+  {0, 2, 4, 6, 9, 0, 0, 0},  // 1: Lydian Pentatonic for major seventh (mode 9, approximated)
+  {0, 3, 5, 7, 10, 0, 0, 0}, // 2: Minor Pentatonic for minor (mode 9)
+  {0, 2, 4, 7, 10, 0, 0, 0}, // 3: Mixolydian Pentatonic for seventh (dominant) (mode 9)
+  {0, 3, 5, 7, 9, 0, 0, 0}, // 4: Dorian Pentatonic for minor seventh (mode 9)
+  {0, 1, 3, 4, 6, 7, 9, 10}, // 5: Octatonic (Half-Whole) for diminished (both modes)
+  {0, 2, 4, 6, 8, 10, 0, 0}, // 6: Whole Tone for augmented (both modes)
+  {0, 2, 4, 5, 7, 8, 9, 11}, // 7: Diminished 6th (1, 2, 3, 4, 5, b6, 6, 7) for major sixth (Barry Harris, both modes)
+  {0, 2, 3, 5, 7, 8, 9, 11}, // 8: Diminished 6th Minor (1, 2, b3, 4, 5, b6, 6, 7) for minor sixth (Barry Harris, both modes)
+  {2, 4, 5, 7, 8, 9, 11, 12}, // 9: Offset Diminished 6th (1, 2, 3, 4, 5, b6, 6, 7) for full diminished (Barry Harris, both modes)
+  {0, 2, 4, 5, 7, 9, 11, 0}, // 10: Major (Ionian) for major chord (mode 8)
+  {0, 2, 3, 5, 7, 9, 10, 0}, // 11: Dorian for minor seventh (mode 8)
+  {0, 2, 4, 6, 7, 9, 11, 0}, // 12: Lydian for major seventh (mode 8)
+  {0, 2, 4, 5, 7, 9, 10, 0}, // 13: Mixolydian for seventh (dominant) (mode 8)
+  {0, 2, 3, 5, 7, 8, 10, 0}  // 14: Natural Minor (Aeolian) for minor (mode 8)
 };
 
-const uint8_t chord_scale_lengths[14] = {5, 5, 5, 5, 5, 8, 6, 8, 8, 8, 7, 7, 7, 7}; // Number of notes in each scale
-
+const uint8_t chord_scale_lengths[15] = {5, 5, 5, 5, 5, 8, 6, 8, 8, 8, 7, 7, 7, 7, 7}; // Number of notes in each scale
 
 float c_frequency = 130.81;                      // for C3
 uint8_t chord_octave_change=4;
@@ -617,7 +617,6 @@ uint8_t calculate_note_chord(uint8_t voice, bool slashed, bool sharp) {
 }
 // function to calculate the level of individual harp touch
 // Updated for scale mode
-// Updated calculate_note_harp function
 uint8_t calculate_note_harp(uint8_t string, bool slashed, bool sharp) {
   if (scalar_harp_selection >= 1 && scalar_harp_selection <= 6) { // Existing scale modes (1–6)
     uint8_t scale_index = scalar_harp_selection - 1; // Adjust for 0-based array indexing
@@ -638,13 +637,13 @@ uint8_t calculate_note_harp(uint8_t string, bool slashed, bool sharp) {
     if (current_chord == &major) {
       scale_index = use_pentatonic ? 0 : 10; // Major Pentatonic (0) or Major (10)
     } else if (current_chord == &maj_seventh) {
-      scale_index = use_pentatonic ? 1 : 11; // Lydian Pentatonic (1) or Lydian (11)
+      scale_index = use_pentatonic ? 1 : 12; // Lydian Pentatonic (1) or Lydian (12)
     } else if (current_chord == &minor) {
-      scale_index = use_pentatonic ? 2 : 12; // Minor Pentatonic (2) or Natural Minor (12)
+      scale_index = use_pentatonic ? 2 : 14; // Minor Pentatonic (2) or Aeolian (14)
     } else if (current_chord == &seventh) {
       scale_index = use_pentatonic ? 3 : 13; // Mixolydian Pentatonic (3) or Mixolydian (13)
     } else if (current_chord == &min_seventh) {
-      scale_index = use_pentatonic ? 4 : 4; // Minor Pentatonic (4) for both (no Dorian in mode 8)
+      scale_index = use_pentatonic ? 4 : 11; // Minor Pentatonic (4) for mode 9, Dorian (11) for mode 8
     } else if (current_chord == &dim) {
       scale_index = 5; // Octatonic (Half-Whole), no pentatonic version
     } else if (current_chord == &aug) {
