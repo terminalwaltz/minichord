@@ -698,6 +698,8 @@ uint8_t calculate_note_harp(uint8_t string, bool slashed, bool sharp) {
       }
     }
     return note;
+  } else {
+    return string + 24; // Chromatic mode
   }
 }
 //-->>RYTHM MODE UTILITIES
