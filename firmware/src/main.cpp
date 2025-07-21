@@ -117,6 +117,7 @@ uint8_t harp_octave_change=4;
 uint8_t chord_frame_shift=0;
 uint8_t transpose_semitones=0;                       // to use to transpose the instrument, number of semitones
 uint8_t (*current_chord)[7] = &major;            // the array holding the current chord
+uint8_t (*harp_chord)[7] = &major;               // latches to current chord for scalar_harp_selection 8 and 9
 uint8_t current_chord_notes[7];                  // the array for the note calculation within the chord, calculate 7 of them for the arpeggiator mode
 uint8_t current_applied_chord_notes[7];          // the array for the note calculation within the chord
 uint8_t current_harp_notes[12];                  // the array for the note calculation within the string
@@ -631,32 +632,33 @@ uint8_t calculate_note_harp(uint8_t string, bool slashed, bool sharp) {
     }
     uint8_t note = root_note + scale_intervals[scale_index][scale_degree] + (octave * 12);
     return note + 12; // Keep +12 to avoid edge case problems in key of C
-  } else if (scalar_harp_selection == 8 || scalar_harp_selection == 9) { // Chord scales mode (8: full scales, 9: pentatonic scales)
-    uint8_t scale_index;
-    bool use_pentatonic = (scalar_harp_selection == 9); // Use pentatonic scales for mode 9
-    if (current_chord == &major) {
-      scale_index = use_pentatonic ? 0 : 10; // Major Pentatonic (0) or Major (10)
-    } else if (current_chord == &maj_seventh) {
-      scale_index = use_pentatonic ? 1 : 12; // Lydian Pentatonic (1) or Lydian (12)
-    } else if (current_chord == &minor) {
-      scale_index = use_pentatonic ? 2 : 14; // Minor Pentatonic (2) or Aeolian (14)
-    } else if (current_chord == &seventh) {
-      scale_index = use_pentatonic ? 3 : 13; // Mixolydian Pentatonic (3) or Mixolydian (13)
-    } else if (current_chord == &min_seventh) {
-      scale_index = use_pentatonic ? 4 : 11; // Minor Pentatonic (4) for mode 9, Dorian (11) for mode 8
-    } else if (current_chord == &dim) {
-      scale_index = 5; // Octatonic (Half-Whole), no pentatonic version
-    } else if (current_chord == &aug) {
-      scale_index = 6; // Whole Tone, no pentatonic version
-    } else if (current_chord == &maj_sixth) {
-      scale_index = 7; // Diminished 6th (Barry Harris), no pentatonic version
-    } else if (current_chord == &min_sixth) {
-      scale_index = 8; // Diminished 6th Minor (Barry Harris), no pentatonic version
-    } else if (current_chord == &full_dim) {
-      scale_index = 9; // Offset Diminished 6th (Barry Harris), no pentatonic version
-    } else {
-      scale_index = use_pentatonic ? 0 : 10; // Default to Major Pentatonic or Major
-    }
+  } else if (scalar_harp_selection == 8 || scalar_harp_selection == 9) {  
+    // uses harp_chord, latched to current_chord to avoid unintended reset of harp when current_line = -1
+  uint8_t scale_index;
+  bool use_pentatonic = (scalar_harp_selection == 9);
+  if (harp_chord == &major) {
+    scale_index = use_pentatonic ? 0 : 10;
+  } else if (harp_chord == &maj_seventh) {
+    scale_index = use_pentatonic ? 1 : 12;
+  } else if (harp_chord == &minor) {
+    scale_index = use_pentatonic ? 2 : 14;
+  } else if (harp_chord == &seventh) {
+    scale_index = use_pentatonic ? 3 : 13;
+  } else if (harp_chord == &min_seventh) {
+    scale_index = use_pentatonic ? 4 : 11;
+  } else if (harp_chord == &dim) {
+    scale_index = 5;
+  } else if (harp_chord == &aug) {
+    scale_index = 6;
+  } else if (harp_chord == &maj_sixth) {
+    scale_index = 7;
+  } else if (harp_chord == &min_sixth) {
+    scale_index = 8;
+  } else if (harp_chord == &full_dim) {
+    scale_index = 9;
+  } else {
+    scale_index = use_pentatonic ? 0 : 10; // Fallback to major/pentatonic
+  }
 
     uint8_t scale_length = chord_scale_lengths[scale_index];
     uint8_t octave = (string / scale_length) > 0 ? (string / scale_length) : 0;
@@ -1142,6 +1144,9 @@ void loop() {
       // Calculate chord notes
       for (int i = 0; i < 7; i++) {
         current_chord_notes[i] = calculate_note_chord(i, slash_chord, sharp_active);
+      }
+      if (button_pushed && current_line >= 0 && (scalar_harp_selection == 8 || scalar_harp_selection == 9)) {
+          harp_chord = current_chord;
       }
       // Apply chord notes if button pushed or in rhythm mode
       if (button_pushed || rythm_mode) {
