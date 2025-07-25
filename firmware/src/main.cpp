@@ -101,7 +101,7 @@ const uint8_t chord_scale_intervals[15][8] = {
   {0, 2, 4, 6, 8, 10, 0, 0}, // 6: Whole Tone for augmented (both modes)
   {0, 2, 4, 5, 7, 8, 9, 11}, // 7: Diminished 6th (1, 2, 3, 4, 5, b6, 6, 7) for major sixth (Barry Harris, both modes)
   {0, 2, 3, 5, 7, 8, 9, 11}, // 8: Diminished 6th Minor (1, 2, b3, 4, 5, b6, 6, 7) for minor sixth (Barry Harris, both modes)
-  {2, 4, 5, 7, 8, 9, 11, 12}, // 9: Offset Diminished 6th (1, 2, 3, 4, 5, b6, 6, 7) for full diminished (Barry Harris, both modes)
+  {0, 2, 3, 4, 6, 7, 9, 11}, // 9: Offset Diminished 6th (1, 2, 3, 4, 5, b6, 6, 7) for full diminished (Barry Harris, both modes)
   {0, 2, 4, 5, 7, 9, 11, 0}, // 10: Major (Ionian) for major chord (mode 8)
   {0, 2, 3, 5, 7, 9, 10, 0}, // 11: Dorian for minor seventh (mode 8)
   {0, 2, 4, 6, 7, 9, 11, 0}, // 12: Lydian for major seventh (mode 8)
