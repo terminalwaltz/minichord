@@ -585,16 +585,22 @@ input[type="checkbox"] {
 
 /* Theme toggle button */
 #theme-toggle {
-  position: fixed;
-  top: 10px;
-  right: 450px;
+  position: relative;
+  top: 0px; 
+  left: 5px; 
   background: none;
   border: none;
-  font-size: 1.5em;
+  font-size: 1em; 
   cursor: pointer;
-  z-index: 1000;
+  z-index: 1000; 
   color: var(--text-color);
-  transition: color 0.3s;
+  opacity: 0.7; 
+  transition: color 0.3s, opacity 0.3s;
+}
+
+#theme-toggle:hover,
+#theme-toggle:focus {
+  opacity: 1; 
 }
 
 body.dark-mode #theme-toggle::before {
