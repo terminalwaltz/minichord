@@ -684,11 +684,13 @@ void recalculate_timer() {
 //--->>FILE HANDLING UTILITIES
 String serialize(int16_t data_array[], u_int16_t array_size) {
   String dataString = "0,";
-  dataString += String(current_bank_number); // to save the number of the bank for the online display
+  dataString += String(current_bank_number); // Save the bank number for the online display
   dataString += ",";
   for (u_int16_t i = 2; i < array_size; i++) {
-    dataString += String(data_array[i]);
-    dataString += ",";
+    if (i != 255) { // Skip index 255 (master tuning)
+      dataString += String(data_array[i]);
+      dataString += ",";
+    }
   }
   return dataString;
 }
@@ -701,7 +703,9 @@ void deserialize(String input, int16_t data_array[]) {
   p = strtok(string, ",");
   int i = 0;
   while (p && i < parameter_size) {
-    data_array[i] = atoi(p);
+    if (i != 255) { // Skip index 255 (master tuning)
+      data_array[i] = atoi(p);
+    }
     p = strtok(NULL, ",");
     i++;
   }
