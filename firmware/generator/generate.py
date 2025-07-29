@@ -55,7 +55,7 @@ with open('parameters.json') as f: # Reserved adresses: 0 for system command and
                         with a.div(klass="bloc B3 M3 S3 button_div"):
                             a.button(onclick='save_current_settings()', _t='save to bank', klass="inactive")
                         with a.div(klass="bloc B3 M3 S3 button_div"):
-                            a.button(onclick='save_as_user_default()', _t='save as user default', klass="inactive") # New button
+                            a.button(onclick='save_as_user_default()', _t='save as user default', klass="inactive user-default-button")
                     with a.div(klass="line"):
                         a.h5(_t='sharing:', klass="inactive")
                     with a.div(klass="line"):
