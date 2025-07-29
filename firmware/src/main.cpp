@@ -125,11 +125,7 @@ int16_t default_bank_sysex_parameters[preset_number][parameter_size] = {
 }; 
 int16_t current_sysex_parameters[parameter_size] = {0,0,50,50,512,512,512,1,0,0,192,100,49,100,184,100,157,100,0,0,0,0,0,0,0,0,0,0,0,67,0,0,0,0,0,0,0,0,0,0,0,16,0,8,8,12,42,1171,1,423,20,70,3,35,83,59,2658,1,0,0,0,0,0,0,0,1,1,1,100,1,1,0,1,1,1,1,14,0,0,70,0,0,0,100,0,6,0,0,755,195,23,61,29,0,0,0,0,162,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,13,8,100,16,0,200,0,0,50,0,50,18,32,50,0,0,10,66,353,65,995,1,569,16,141,32,83,28,48,54,1,0,0,0,56,0,389,0,20,0,0,0,0,1,1,1,0,1,1,0,1,1,1,1,0,0,0,70,0,0,0,100,0,38,0,0,80,16,4,94,753,474,70,5,100,100,100,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,16,0,6,6,32,0,6,0,16,0,6,6,32,0,6,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 const char *bank_name[preset_number] = {"a.txt", "b.txt", "c.txt", "d.txt", "e.txt", "f.txt", "g.txt", "h.txt", "i.txt", "j.txt", "k.txt", "l.txt"};
-const char *user_default_bank_name[preset_number] = {
-    "user_default_a.txt", "user_default_b.txt", "user_default_c.txt", "user_default_d.txt",
-    "user_default_e.txt", "user_default_f.txt", "user_default_g.txt", "user_default_h.txt",
-    "user_default_i.txt", "user_default_j.txt", "user_default_k.txt", "user_default_l.txt"
-};
+const char *user_default_bank_name[] = {"ua.txt","ub.txt","uc.txt","ud.txt","ue.txt","uf.txt","ug.txt","uh.txt","ui.txt","uj.txt","uk.txt","ul.txt"};
 int8_t current_bank_number = 0;
 float bank_led_hue = 0;
 // Reserved SYSEX adresses
@@ -359,11 +355,22 @@ void set_led_color(float h, float s, float v) {
   return;
 }
 
+
+void listFiles() {
+  Serial.println("Listing files in LittleFS:");
+  File dir = myfs.open("/");
+  while (File entry = dir.openNextFile()) {
+    Serial.print("File: ");
+    Serial.println(entry.name());
+    entry.close();
+  }
+  dir.close();
+}
+
 //-->>UTILITIES FOR SYSEX HANDLING
 void control_command(uint8_t command, uint8_t parameter) {
   switch (command) {
-    case 0: // Send all data
-      Serial.println("Reporting all data");
+    case 0:
       int8_t midi_data_array[parameter_size * 2];
       for (int i = 0; i < parameter_size; i++) {
         midi_data_array[2 * i] = current_sysex_parameters[i] % 128;
@@ -371,56 +378,69 @@ void control_command(uint8_t command, uint8_t parameter) {
       }
       usbMIDI.sendSysEx(parameter_size * 2, (const uint8_t *)&midi_data_array, 0);
       break;
-    case 1: // Wipe memory to factory defaults
-      Serial.println("Wiping memory to factory defaults");
+    case 1:
+      Serial.println("Restoring factory defaults");
       digitalWrite(_MUTE_PIN, LOW);
-      myfs.quickFormat();
+      for (int bank = 0; bank < 12; bank++) {
+        Serial.print("Restoring factory preset for bank: ");
+        Serial.println(bank);
+        save_config(bank, true, false);
+      }
       current_bank_number = 0;
-      save_config(current_bank_number, true, false); // Save factory default
+      load_config(current_bank_number);
       digitalWrite(_MUTE_PIN, HIGH);
       break;
-    case 2: // Save current bank
+    case 2:
       Serial.print("Saving to bank: ");
       Serial.println(parameter);
       save_config(parameter, false, false);
       break;
-    case 3: // Save factory default
-      Serial.print("Saving factory default to bank: ");
-      Serial.println(parameter);
-      current_bank_number = parameter;
-      save_config(parameter, true, false);
-      break;
-    case 4: // Save user default
+    case 4:
       Serial.print("Saving user default to bank: ");
       Serial.println(parameter);
       current_bank_number = parameter;
       save_config(parameter, false, true);
       break;
-    case 5: { // Reset to user defaults
-      Serial.println("Resetting to user defaults");
+    case 5: {
+      Serial.print("Resetting to user defaults for bank: ");
+      Serial.println(current_bank_number);
       digitalWrite(_MUTE_PIN, LOW);
-      File user_default_entry = myfs.open(user_default_bank_name[current_bank_number]);
+      Serial.print("LittleFS available: ");
+      Serial.println(myfs.exists("/") ? "Yes" : "No");
+      listFiles();
+      const char *filename = user_default_bank_name[current_bank_number];
+      Serial.print("Checking if file exists: ");
+      Serial.println(myfs.exists(filename) ? "Yes" : "No");
+      File user_default_entry = myfs.open(filename, FILE_READ);
       if (user_default_entry) {
         Serial.print("Reading user default file: ");
-        Serial.println(user_default_bank_name[current_bank_number]);
+        Serial.println(filename);
         String data_string = "";
         while (user_default_entry.available()) {
           data_string += char(user_default_entry.read());
         }
-        Serial.print("User default data: ");
-        Serial.println(data_string);
-        deserialize(data_string, current_sysex_parameters);
-        Serial.println("Deserialization complete");
-        save_config(current_bank_number, false, false); // Save to regular bank
+        Serial.print("User default data (first 50 chars): ");
+        Serial.println(data_string.substring(0, 50));
+        if (data_string.length() > 0) {
+          deserialize(data_string, current_sysex_parameters);
+          Serial.println("Deserialization complete");
+          save_config(current_bank_number, false, false);
+        } else {
+          Serial.println("Error: User default file is empty");
+          save_config(current_bank_number, true, false);
+        }
         user_default_entry.close();
       } else {
-        Serial.println("No user default file found, loading factory default");
-        save_config(current_bank_number, true, false); // Fallback to factory default
+        Serial.print("Error: Cannot open ");
+        Serial.println(filename);
+        save_config(current_bank_number, true, false);
       }
       digitalWrite(_MUTE_PIN, HIGH);
       break;
     }
     default:
+      Serial.print("Unknown command: ");
+      Serial.println(command);
       break;
   }
 }
@@ -436,11 +456,11 @@ void processMIDI(void) {
     if (adress == 0) { // it is a control command
       control_command(data[3], data[4]);
     } else {
-      Serial.print("Received instruction on adress:");
-      Serial.print(adress);
+      //Serial.print("Received instruction on adress:");
+      //Serial.print(adress);
       int value = data[3] + 128 * data[4];
-      Serial.print(" with value:");
-      Serial.println(value);
+      //Serial.print(" with value:");
+      //Serial.println(value);
       current_sysex_parameters[adress] = value;
       apply_audio_parameter(adress, value);
     }
@@ -713,29 +733,62 @@ void deserialize(String input, int16_t data_array[]) {
 }
 
 void save_config(int bank_number, bool default_save, bool user_default_save) {
-  digitalWrite(_MUTE_PIN, LOW); // Mute DAC
+  digitalWrite(_MUTE_PIN, LOW);
   current_bank_number = bank_number;
   AudioNoInterrupts();
   const char *filename = user_default_save ? user_default_bank_name[bank_number] : bank_name[bank_number];
+  Serial.print("Checking if file exists before save: ");
+  Serial.println(myfs.exists(filename) ? "Yes" : "No");
   myfs.remove(filename);
   File dataFile = myfs.open(filename, FILE_WRITE);
+  if (!dataFile) {
+    Serial.print("Error: Failed to open ");
+    Serial.print(filename);
+    Serial.println(" for writing");
+    AudioInterrupts();
+    digitalWrite(_MUTE_PIN, HIGH);
+    return;
+  }
+  String data_string = serialize(current_sysex_parameters, parameter_size);
   if (default_save && !user_default_save) {
     Serial.println("Writing factory default file");
-    String return_data = serialize(default_bank_sysex_parameters[bank_number], parameter_size);
-    dataFile.println(return_data);
+    data_string = serialize(default_bank_sysex_parameters[bank_number], parameter_size);
   } else {
     Serial.println("Saving current settings");
-    dataFile.println(serialize(current_sysex_parameters, parameter_size));
   }
-  Serial.print("Saved preset: ");
-  Serial.println(dataFile.name());
+  if (dataFile.println(data_string)) {
+    Serial.print("Saved preset: ");
+    Serial.println(dataFile.name());
+    dataFile.close();
+    Serial.print("Verifying file exists after save: ");
+    Serial.println(myfs.exists(filename) ? "Yes" : "No");
+    listFiles();
+    File verifyFile = myfs.open(filename, FILE_READ);
+    if (verifyFile) {
+      Serial.print("Verified file exists: ");
+      Serial.println(filename);
+      String verify_data = "";
+      while (verifyFile.available()) {
+        verify_data += char(verifyFile.read());
+      }
+      Serial.print("File contents: ");
+      Serial.println(verify_data.substring(0, 50));
+      verifyFile.close();
+    } else {
+      Serial.print("Error: Cannot verify ");
+      Serial.println(filename);
+    }
+  } else {
+    Serial.print("Error: Failed to write to ");
+    Serial.println(filename);
+  }
   dataFile.close();
   if (!user_default_save) {
-    load_config(current_bank_number); // Reload only for regular or factory presets
+    load_config(current_bank_number);
   }
   flag_save_needed = false;
   AudioInterrupts();
-  digitalWrite(_MUTE_PIN, HIGH); // Unmute DAC
+  digitalWrite(_MUTE_PIN, HIGH);
 }
 
 void load_config(int bank_number) {
@@ -856,6 +909,7 @@ void setup() {
       set_led_color(0, 1.0, 1.0); // turn red light
     }
   }
+  listFiles();
   Serial.println("Loading the preset");
   load_config(current_bank_number);
   // initializing the strings
@@ -875,48 +929,40 @@ void setup() {
 }
 
 void loop() {
-  //>>Looking for incoming midi message
   if (usbMIDI.read()) {
     processMIDI();
   }
-  //Checking if the sysex is still connected 
   if (sysex_controler_connected && (USB1_PORTSC1, 7)) {
     sysex_controler_connected = false;
   }
-  //>>Updating the debouncers
   hold_button.set(digitalRead(HOLD_BUTTON_PIN));
   up_button.set(digitalRead(UP_PGM_PIN));
   down_button.set(digitalRead(DOWN_PGM_PIN));
   LBO_flag.set(digitalRead(BATT_LBO_PIN));
   chord_matrix.update(chord_matrix_array);
-  //>>Handling low battery blink indicator
   uint8_t LBO_transition = LBO_flag.read_transition();
   if (LBO_transition == 1) {
     led_blinking_flag = true;
   } else if (LBO_transition == 2) {
     led_blinking_flag = false;
-    set_led_color(bank_led_hue, 1.0, 1 - led_attenuation); // Turn the LED to the bank color
+    set_led_color(bank_led_hue, 1.0, 1 - led_attenuation);
   }
-
   if (led_blinking_flag) {
     set_led_color(bank_led_hue, 1.0, 0.6 + 0.4 * sin(color_led_blink_val));
     color_led_blink_val += 0.005;
   }
-
-  //>>Handling the hold button functions
   uint8_t hold_transition = hold_button.read_transition();
   if (hold_transition == 2) {
     if (!rythm_mode) {
       Serial.println("Switching mode");
       continuous_chord = !continuous_chord;
       analogWrite(RYTHM_LED_PIN, 255 * continuous_chord);
-      if (current_line == -1) { // If no button is currently pushed, we want to trigger when it happens in continuous chord mode
+      if (current_line == -1) {
         trigger_chord = true;
       }
     } else {
-      //>>Push tempo management
-      if (since_last_button_push > 100 && since_last_button_push < 2000) { // Check that we are inside the BPM range
-        rythm_bpm = (rythm_bpm * 5.0 + 60 * 1000 / since_last_button_push) / 6.0; // Push for full note, with smoothing
+      if (since_last_button_push > 100 && since_last_button_push < 2000) {
+        rythm_bpm = (rythm_bpm * 5.0 + 60 * 1000 / since_last_button_push) / 6.0;
         Serial.print("Updating the BPM to: ");
         Serial.println(rythm_bpm);
         recalculate_timer();
@@ -929,7 +975,6 @@ void loop() {
     }
     since_last_button_push = 0;
   }
-  //>>Handling the long hold to switch to rhythm mode
   if (hold_transition == 1) {
     if (since_last_button_push > 800) {
       Serial.println("Long push, switching rhythm mode");
@@ -951,86 +996,81 @@ void loop() {
       }
     }
   }
-
-    //>>Handling user default and factory reset button combinations
   static elapsedMillis since_up_down_press;
-  static bool long_press_handled = false; // Flag to prevent repeated actions
-  static elapsedMillis since_long_press; // Timer for lockout after long press
+  static bool long_press_handled = false;
+  static elapsedMillis since_long_press;
+  static bool skip_preset_switch = false; // New flag to skip preset switching
   bool up_value = up_button.read_value();
   bool down_value = down_button.read_value();
   bool sharp_value = chord_matrix_array[0].read_value();
   bool any_other_chord_active = false;
-  for (int i = 1; i < 22; i++) { // Check chord buttons 1–21 (excluding SHARP)
+  for (int i = 1; i < 22; i++) {
     if (chord_matrix_array[i].read_value()) {
       any_other_chord_active = true;
-      Serial.print("Chord button ");
-      Serial.print(i);
-      Serial.println(" active");
       break;
     }
   }
-
   if (up_value && down_value) {
-    if (since_up_down_press > 2000 && !long_press_handled) { // Long press > 2 seconds, only once
+    if (since_up_down_press > 2000 && !long_press_handled) {
       if (sharp_value) {
-        // Long press UP + DOWN + SHARP: Factory reset
         Serial.println("Factory reset triggered");
-        control_command(1, 0); // Wipe memory to factory defaults
-        set_led_color(0, 1.0, 1.0); // Flash red to indicate factory reset
+        control_command(1, 0);
+        set_led_color(0, 1.0, 1.0);
         delay(500);
         set_led_color(bank_led_hue, 1.0, 1 - led_attenuation);
-        long_press_handled = true; // Mark action as handled
-        since_long_press = 0; // Start lockout timer
+        long_press_handled = true;
+        since_long_press = 0;
+        skip_preset_switch = true; // Skip preset switching
       } else if (any_other_chord_active) {
-        // Long press UP + DOWN + any other chord button: Reset to user defaults
         Serial.println("Resetting to user defaults");
-        control_command(5, 0); // Reset to user defaults
-        set_led_color(120, 1.0, 1.0); // Flash green to indicate user default reset
+        control_command(5, 0);
+        set_led_color(120, 1.0, 1.0);
         delay(500);
         set_led_color(bank_led_hue, 1.0, 1 - led_attenuation);
-        long_press_handled = true; // Mark action as handled
-        since_long_press = 0; // Start lockout timer
+        long_press_handled = true;
+        since_long_press = 0;
+        skip_preset_switch = true;
       } else {
-        // Long press UP + DOWN: Save current bank as user default
         Serial.print("Saving user default for bank: ");
         Serial.println(current_bank_number);
         save_config(current_bank_number, false, true);
-        set_led_color(240, 1.0, 1.0); // Flash blue to indicate save
+        set_led_color(240, 1.0, 1.0);
         delay(500);
         set_led_color(bank_led_hue, 1.0, 1 - led_attenuation);
-        long_press_handled = true; // Mark action as handled
-        since_long_press = 0; // Start lockout timer
+        long_press_handled = true;
+        since_long_press = 0;
+        skip_preset_switch = true;
       }
     }
   } else {
-    since_up_down_press = 0; // Reset timer if UP or DOWN is released
-    long_press_handled = false; // Reset flag when buttons are released
+    since_up_down_press = 0;
+    long_press_handled = false;
+    skip_preset_switch = false; // Reset after buttons are released
   }
-
-  //>>Handling the preset change interface
-  if (since_long_press > 500 || since_long_press == 0) { // Allow preset changes only after 500ms lockout
-    if (up_button.read_transition() == 1) { // Trigger on release (HIGH to LOW)
+  static elapsedMillis since_last_preset_change;
+  if ((since_long_press > 1500 || since_long_press == 0) && !skip_preset_switch) {
+    if (up_button.read_transition() == 1 && since_last_preset_change > 300) {
       Serial.println("Switching to next preset");
       if (!sysex_controler_connected && flag_save_needed) {
-        save_config(current_bank_number, false, false); // Save to remember alternate pot position
+        save_config(current_bank_number, false, false);
       }
       current_bank_number = (current_bank_number + 1) % 12;
       load_config(current_bank_number);
+      since_last_preset_change = 0;
     }
-    if (down_button.read_transition() == 1) { // Trigger on release (HIGH to LOW)
+    if (down_button.read_transition() == 1 && since_last_preset_change > 300) {
       Serial.println("Switching to last preset");
       if (!sysex_controler_connected && flag_save_needed) {
-        save_config(current_bank_number, false, false); // Save to remember alternate pot position
+        save_config(current_bank_number, false, false);
       }
       current_bank_number = (current_bank_number - 1);
       if (current_bank_number == -1) {
         current_bank_number = 11;
       }
       load_config(current_bank_number);
+      since_last_preset_change = 0;
     }
   }
-
-  //>>Handling the turning off of notes in rhythm mode (mandatory because we are missing one timer to do it cleanly)
   if (rythm_mode) {
     for (int i = 0; i < 4; i++) {
       if (note_off_timing[i] > note_pushed_duration && chord_envelope_array[i]->isSustain()) {
@@ -1045,16 +1085,10 @@ void loop() {
       }
     }
   }
-
-  //>>Handling the potentiometer mode
-  bool alternate = chord_matrix_array[0].read_value(); // Use the sharp as potentiometer alt selection
+  bool alternate = chord_matrix_array[0].read_value();
   flag_save_needed = chord_pot.update_parameter(alternate) || flag_save_needed;
   flag_save_needed = harp_pot.update_parameter(alternate) || flag_save_needed;
   flag_save_needed = mod_pot.update_parameter(alternate) || flag_save_needed;
-
-  //>>Handling of chords logic
-  // If no button is active in touch mode, then turn everything off
-  // If more than three buttons in a line are on, we don't take it on
   if (!continuous_chord && !rythm_mode) {
     bool one_button_active = false;
     int line_accumulator[3] = {0, 0, 0};
@@ -1070,7 +1104,7 @@ void loop() {
       inhibit_button = true;
     }
     if (!one_button_active) {
-      inhibit_button = false; // We can resume working
+      inhibit_button = false;
       AudioNoInterrupts();
       for (int i = 0; i < 4; i++) {
         if (chord_envelope_array[i]->isSustain()) {
@@ -1087,11 +1121,9 @@ void loop() {
       AudioInterrupts();
     }
   }
-  // If there is a line currently active, then start the update logic
   if (current_line >= 0) {
-    fundamental = current_line; // This is our active line
+    fundamental = current_line;
     slash_chord = false;
-    // Check if we have a slashed chord and, if so, which
     for (int i = 1; i < 22; i++) {
       bool value = chord_matrix_array[i].read_value();
       if (value) {
@@ -1102,14 +1134,12 @@ void loop() {
         }
       }
     }
-    // Detect which buttons are active within our line
     bool button_maj = chord_matrix_array[1 + current_line * 3].read_value();
     bool button_min = chord_matrix_array[2 + current_line * 3].read_value();
     bool button_seventh = chord_matrix_array[3 + current_line * 3].read_value();
     if (!(button_maj || button_seventh || button_min)) {
-      current_line = -1; // If no button is active, then line is no longer active
+      current_line = -1;
     } else {
-      // Depending on the active button, identify the current chord
       if (button_maj && !button_min && !button_seventh) {
         if (barry_harris_mode) {
           current_chord = &maj_sixth;
@@ -1143,23 +1173,21 @@ void loop() {
       if (button_maj && button_min && button_seventh) {
         current_chord = &aug;
       }
-      // Calculate the target notes
       for (int i = 0; i < 7; i++) {
         current_chord_notes[i] = calculate_note_chord(i, slash_chord, sharp_active);
       }
-      // Apply the target only if there is an action from the user: the push of a button
       if (button_pushed) {
         Serial.println("Updating frequencies");
-        if (!rythm_mode && !trigger_chord && !retrigger_chord) { // If not in rhythm mode, directly apply the frequency
+        if (!rythm_mode && !trigger_chord && !retrigger_chord) {
           for (int i = 0; i < 4; i++) {
             set_chord_voice_frequency(i, current_chord_notes[i]);
           }
-        } else { // In rhythm mode, push to a buffer
+        } else {
           for (int i = 0; i < 7; i++) {
             current_applied_chord_notes[i] = current_chord_notes[i];
           }
         }
-        for (int i = 0; i < 12; i++) { // Update the harp frequency
+        for (int i = 0; i < 12; i++) {
           current_harp_notes[i] = calculate_note_harp(i, slash_chord, sharp_active);
           if (change_held_strings) {
             if (harp_started_notes[i] != 0) {
@@ -1168,13 +1196,13 @@ void loop() {
               usbMIDI.sendNoteOn(midi_base_note_transposed + current_harp_notes[i], harp_attack_velocity, 1, harp_port);
               harp_started_notes[i] = midi_base_note_transposed + current_harp_notes[i];
             }
-            if (string_enveloppe_array[i]->isSustain()) { // Change the frequency if in the sustain part
+            if (string_enveloppe_array[i]->isSustain()) {
               set_harp_voice_frequency(i, current_harp_notes[i]);
             }
           }
         }
       }
-      if ((trigger_chord || (button_pushed && retrigger_chord)) && !rythm_mode) { // If explicit trigger or retrigger needed
+      if ((trigger_chord || (button_pushed && retrigger_chord)) && !rythm_mode) {
         Serial.println("Trigger");
         note_timer[0].priority(253);
         note_timer[1].priority(253);
@@ -1186,31 +1214,28 @@ void loop() {
         note_timer[3].begin([] { play_single_note(3, &note_timer[3]); }, 10 + chord_retrigger_release * 1000 + inter_string_delay * 3 + random(random_delay));
         trigger_chord = false;
       }
-      button_pushed = false; // Reset button pushed
+      button_pushed = false;
     }
   }
-  // Read button transitions
-  int sharp_transition = chord_matrix_array[0].read_transition(); // First the sharp
-  if (sharp_transition > 1 && current_line != -1) { // Trigger button pushed only if buttons are selected
+  int sharp_transition = chord_matrix_array[0].read_transition();
+  if (sharp_transition > 1 && current_line != -1) {
     button_pushed = true;
   }
-  sharp_active = chord_matrix_array[0].read_value(); // Record the current value
-  for (int i = 1; i < 22; i++) { // Now the rest of the chord buttons
+  sharp_active = chord_matrix_array[0].read_value();
+  for (int i = 1; i < 22; i++) {
     int value = chord_matrix_array[i].read_transition();
-    if (value > 1 && !inhibit_button) { // A button was pushed
+    if (value > 1 && !inhibit_button) {
       button_pushed = true;
       Serial.println("Pushed");
       Serial.println(i);
       if (current_line == -1) {
-        current_line = (i - 1) / 3; // If no line is active, set new base line
+        current_line = (i - 1) / 3;
         if (!continuous_chord) {
           trigger_chord = true;
         }
       }
     }
   }
-
-  //>>Handling the harp functions, once the frequency array is defined
   harp_sensor.update(harp_array);
   for (int i = 0; i < 12; i++) {
     int value = harp_array[i].read_transition();
