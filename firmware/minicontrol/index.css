@@ -290,7 +290,7 @@ h1, h2, h3, h4, h5, h6 {
 dfn {
     font-style: normal;
     cursor: help;
-    transition: background-color 0.2s ease;
+    /* transition: background-color 0.2s ease; */
 }
 
 dfn.highlighted {
@@ -378,6 +378,7 @@ button {
     box-sizing: border-box;
     color: black;
     cursor: pointer;
+    white-space: nowrap;
     display: inline-block;
     font-family: sans-serif;
     text-align: center;
@@ -392,12 +393,9 @@ button {
 }
 
 .user-default-button {
-    background-color: #d4edda;
-    border-color: green;
-    color: #155724;
-    font-size: 0.75em;
-    white-space: nowrap;
-    padding: 0.3em 0.4em;
+    font-size: 0.75em; /* Keep smaller font */
+    white-space: nowrap; /* Prevent wrapping */
+    padding: 0.3em 0.4em; /* Match original button padding */
 }
 
 .button_div {
@@ -414,7 +412,7 @@ button:focus {
 
 .user-default-button:hover,
 .user-default-button:focus {
-    background-color: #c3e6cb;
+    background-color: #f8f9fa;
     opacity: 1;
 }
 

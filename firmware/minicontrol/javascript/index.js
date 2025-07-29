@@ -1,5 +1,6 @@
 // Global controller instance
 const miniChordController = new MiniChordController();
+let isConnected = false; // Track connection state
 
 // Legacy global variables for backward compatibility
 let minichord_device = false;
@@ -113,11 +114,12 @@ function send_array_data() {
 miniChordController.onConnectionChange = function(connected, message) {
     const statusZone = document.getElementById("status_zone");
     const statusValue = document.getElementById("status_value");
+    isConnected = connected; // Update global state
     if (connected) {
         document.getElementById("step3").classList.remove("unsatisfied");
         document.getElementById("information_text").innerHTML = "";
         statusZone.className = "connected";
-        statusValue.textContent = "minichord connected";
+        statusValue.textContent = statusValue.classList.contains("notification") ? statusValue.textContent : "minichord connected";
         var body = document.getElementById('body');
         body.classList.remove("control_full");
     } else {
@@ -143,62 +145,61 @@ miniChordController.onConnectionChange = function(connected, message) {
 };
 
 miniChordController.onDataReceived = function(data) {
-  // Update sliders
-  for (let i = 2; i < miniChordController.parameter_size; i++) {
-    if (data.parameters[i] !== undefined) {
-      set_slider_to_value(i, data.parameters[i]);
-    }
-  }
-
-  // Update rhythm checkboxes
-  for (let j = 0; j < data.rhythmData.length; j++) {
-    const rhythmBits = data.rhythmData[j];
-    if (rhythmBits) {
-      for (let k = 0; k < 7; k++) {
-        const checkbox = document.getElementById("checkbox" + k + j);
-        if (checkbox) {
-          checkbox.checked = rhythmBits[k];
+    // Update sliders
+    for (let i = 2; i < miniChordController.parameter_size; i++) {
+        if (data.parameters[i] !== undefined) {
+            set_slider_to_value(i, data.parameters[i]);
         }
-      }
     }
-  }
 
-  // Update bank selection
-  const element = document.getElementById("bank_number_selection");
-  if (element) {
-    element.value = data.bankNumber;
-  }
-  active_bank_number = data.bankNumber;
+    // Update rhythm checkboxes
+    for (let j = 0; j < data.rhythmData.length; j++) {
+        const rhythmBits = data.rhythmData[j];
+        if (rhythmBits) {
+            for (let k = 0; k < 7; k++) {
+                const checkbox = document.getElementById("checkbox" + k + j);
+                if (checkbox) {
+                    checkbox.checked = rhythmBits[k];
+                }
+            }
+        }
+    }
 
-  // Apply color theme
-  const result = document.querySelectorAll('[adress_field="' + miniChordController.color_hue_sysex_adress + '"]');
-  if (result.length > 0) {
-    const hue = result[0].valueAsNumber;
-    const elements = document.getElementsByClassName('slider');
+    // Update bank selection
+    const element = document.getElementById("bank_number_selection");
+    if (element) {
+        element.value = data.bankNumber;
+    }
+    active_bank_number = data.bankNumber;
+
+    // Apply color theme
+    const result = document.querySelectorAll('[adress_field="' + miniChordController.color_hue_sysex_adress + '"]');
+    if (result.length > 0) {
+        const hue = result[0].valueAsNumber;
+        const elements = document.getElementsByClassName('slider');
+        for (let i = 0; i < elements.length; i++) {
+            elements[i].style.setProperty('--slider_color', 'hsl(' + hue + ',100%,50%)');
+        }
+    }
+
+    // Update UI state
+    document.getElementById("step3").classList.remove("unsatisfied");
+    document.getElementById("information_text").innerHTML = "";
+    document.getElementById("status_zone").className = "connected";
+    const statusValue = document.getElementById("status_value");
+    if (!statusValue.classList.contains("notification")) {
+        statusValue.textContent = "minichord connected";
+    }
+    isConnected = true; // Update global state
+    var body = document.getElementById('body');
+    body.classList.remove("control_full");
+    var elements = document.querySelectorAll('.inactive');
     for (let i = 0; i < elements.length; i++) {
-      elements[i].style.setProperty('--slider_color', 'hsl(' + hue + ',100%,50%)');
+        if (elements[i].getAttribute("version") <= data.firmwareVersion) {
+            elements[i].classList.add("active");
+            elements[i].classList.remove("inactive");
+        }
     }
-  }
-
-  // Update UI state
-  document.getElementById("step3").classList.remove("unsatisfied");
-  document.getElementById("information_text").innerHTML = "";
-  document.getElementById("status_zone").className = "";
-  document.getElementById("status_zone").classList.add("connected");
-
-  var body = document.getElementById('body');
-  body.classList.remove("control_full");
-  var elements = document.querySelectorAll('.inactive');
-
-  for (let i = 0; i < elements.length; i++) {
-    if (elements[i].getAttribute("version") <= data.firmwareVersion) {
-      elements[i].classList.add("active");
-      elements[i].classList.remove("inactive");
-    }
-  }
-
-  // Update connection status
-  miniChordController.onConnectionChange(true, "");
 };
 
 // Initialize the controller
@@ -259,66 +260,47 @@ function reset_memory() {
 }
 
 function save_current_settings() {
-  if (miniChordController.isConnected()) {
-    var e = document.getElementById("bank_number_selection");
-    var bank_number = parseInt(e.value);
-    console.log("Saving to bank: " + bank_number);
-    const success = miniChordController.saveCurrentSettings(bank_number);
-    if (success) {
-      const statusValue = document.getElementById("status_value");
-      statusValue.textContent = `Saved to Bank ${bank_number + 1}`;
-      statusValue.classList.add("notification");
-      setTimeout(() => {
-        statusValue.classList.remove("notification");
-        statusValue.textContent = miniChordController.isConnected() ? "minichord connected" : "";
-      }, 3000);
+    if (miniChordController.isConnected()) {
+        var e = document.getElementById("bank_number_selection");
+        var bank_number = parseInt(e.value);
+        console.log("Saving to bank: " + bank_number);
+        const success = miniChordController.saveCurrentSettings(bank_number);
+        if (success) {
+            const statusValue = document.getElementById("status_value");
+            statusValue.textContent = `Saved to Bank ${bank_number + 1}`;
+            statusValue.classList.add("notification");
+            setTimeout(() => {
+                statusValue.classList.remove("notification");
+                statusValue.textContent = isConnected ? "minichord connected" : "";
+            }, 3000);
+        }
+        return success;
+    } else {
+        document.getElementById("information_zone").focus();
+        return false;
     }
-    return success;
-  } else {
-    document.getElementById("information_zone").focus();
-    return false;
-  }
 }
 
 function save_as_user_default() {
-  if (miniChordController.isConnected()) {
-    var e = document.getElementById("bank_number_selection");
-    var bank_number = parseInt(e.value);
-    console.log("Saving as User Default for bank: " + bank_number);
-    const success = miniChordController.saveAsUserDefault(bank_number);
-    if (success) {
-      const statusValue = document.getElementById("status_value");
-      statusValue.textContent = `User Default Saved for Bank ${bank_number + 1}`;
-      statusValue.classList.add("notification");
-      setTimeout(() => {
-        statusValue.classList.remove("notification");
-        statusValue.textContent = miniChordController.isConnected() ? "minichord connected" : "";
-      }, 3000);
+    if (miniChordController.isConnected()) {
+        var e = document.getElementById("bank_number_selection");
+        var bank_number = parseInt(e.value);
+        console.log("Saving as User Default for bank: " + bank_number);
+        const success = miniChordController.saveAsUserDefault(bank_number);
+        if (success) {
+            const statusValue = document.getElementById("status_value");
+            statusValue.textContent = `User Default Saved for Bank ${bank_number + 1}`;
+            statusValue.classList.add("notification");
+            setTimeout(() => {
+                statusValue.classList.remove("notification");
+                statusValue.textContent = isConnected ? "minichord connected" : "";
+            }, 3000);
+        }
+        return success;
+    } else {
+        document.getElementById("information_zone").focus();
+        return false;
     }
-    return success;
-  } else {
-    document.getElementById("information_zone").focus();
-    return false;
-  }
-}
-
-function save_as_user_default() {
-  if (miniChordController.isConnected()) {
-    var e = document.getElementById("bank_number_selection");
-    var bank_number = parseInt(e.value);
-    console.log("Saving as User Default for bank: " + bank_number);
-    const success = miniChordController.saveAsUserDefault(bank_number);
-    if (success) {
-      document.getElementById("status_zone").innerHTML = `<span id="dot">●</span><span id="status_value">User Default Saved for Bank ${bank_number + 1}</span>`;
-      setTimeout(() => {
-        document.getElementById("status_zone").innerHTML = `<span id="dot">●</span><span id="status_value"></span>`;
-      }, 2000);
-    }
-    return success;
-  } else {
-    document.getElementById("information_zone").focus();
-    return false;
-  }
 }
 
 function reset_current_bank() {
