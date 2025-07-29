@@ -370,7 +370,7 @@ void listFiles() {
 //-->>UTILITIES FOR SYSEX HANDLING
 void control_command(uint8_t command, uint8_t parameter) {
   switch (command) {
-    case 0:
+    case 0: {
       int8_t midi_data_array[parameter_size * 2];
       for (int i = 0; i < parameter_size; i++) {
         midi_data_array[2 * i] = current_sysex_parameters[i] % 128;
@@ -378,70 +378,82 @@ void control_command(uint8_t command, uint8_t parameter) {
       }
       usbMIDI.sendSysEx(parameter_size * 2, (const uint8_t *)&midi_data_array, 0);
       break;
-    case 1:
-      Serial.println("Restoring factory defaults");
+    }
+    case 1: { // Load Factory preset for the current bank
+      Serial.print("Loading Factory preset for bank: ");
+      Serial.println(current_bank_number);
       digitalWrite(_MUTE_PIN, LOW);
-      for (int bank = 0; bank < 12; bank++) {
-        Serial.print("Restoring factory preset for bank: ");
-        Serial.println(bank);
-        save_config(bank, true, false);
+      // Copy Factory preset to current_sysex_parameters
+      for (int i = 0; i < parameter_size; i++) {
+        current_sysex_parameters[i] = default_bank_sysex_parameters[current_bank_number][i];
       }
-      current_bank_number = 0;
-      load_config(current_bank_number);
-      digitalWrite(_MUTE_PIN, HIGH);
+      save_config(current_bank_number, false, false); // Save to ensure consistency
+      load_config(current_bank_number); // Apply the preset
+      set_led_color(0, 0, 1.0); // White flash
+      delay(200);
+      set_led_color(bank_led_hue, 1.0, 1 - led_attenuation); // Restore bank color
       break;
-    case 2:
+    }
+    case 2: {
       Serial.print("Saving to bank: ");
       Serial.println(parameter);
       save_config(parameter, false, false);
       break;
-    case 4:
+    }
+    case 4: {
       Serial.print("Saving user default to bank: ");
       Serial.println(parameter);
       current_bank_number = parameter;
       save_config(parameter, false, true);
+      set_led_color(0, 0, 1.0); // White flash
+      delay(200);
+      set_led_color(bank_led_hue, 1.0, 1 - led_attenuation); // Restore bank color
       break;
-    case 5: {
-      Serial.print("Resetting to user defaults for bank: ");
+    }
+    case 5: { // Load User preset for the current bank
+      Serial.print("Loading User preset for bank: ");
       Serial.println(current_bank_number);
       digitalWrite(_MUTE_PIN, LOW);
-      Serial.print("LittleFS available: ");
-      Serial.println(myfs.exists("/") ? "Yes" : "No");
-      listFiles();
-      const char *filename = user_default_bank_name[current_bank_number];
-      Serial.print("Checking if file exists: ");
-      Serial.println(myfs.exists(filename) ? "Yes" : "No");
-      File user_default_entry = myfs.open(filename, FILE_READ);
+      File user_default_entry = myfs.open(user_default_bank_name[current_bank_number], FILE_READ);
       if (user_default_entry) {
-        Serial.print("Reading user default file: ");
-        Serial.println(filename);
+        Serial.print("Reading User preset file: ");
+        Serial.println(user_default_bank_name[current_bank_number]);
         String data_string = "";
         while (user_default_entry.available()) {
           data_string += char(user_default_entry.read());
         }
-        Serial.print("User default data (first 50 chars): ");
-        Serial.println(data_string.substring(0, 50));
         if (data_string.length() > 0) {
           deserialize(data_string, current_sysex_parameters);
-          Serial.println("Deserialization complete");
-          save_config(current_bank_number, false, false);
+          save_config(current_bank_number, false, false); // Save to ensure consistency
+          load_config(current_bank_number); // Apply the preset
         } else {
-          Serial.println("Error: User default file is empty");
+          Serial.println("Error: User preset file is empty, loading Factory preset");
+          for (int i = 0; i < parameter_size; i++) {
+            current_sysex_parameters[i] = default_bank_sysex_parameters[current_bank_number][i];
+          }
           save_config(current_bank_number, true, false);
+          load_config(current_bank_number);
         }
         user_default_entry.close();
       } else {
-        Serial.print("Error: Cannot open ");
-        Serial.println(filename);
+        Serial.print("Error: No User preset for bank, loading Factory preset: ");
+        Serial.println(current_bank_number);
+        for (int i = 0; i < parameter_size; i++) {
+          current_sysex_parameters[i] = default_bank_sysex_parameters[current_bank_number][i];
+        }
         save_config(current_bank_number, true, false);
+        load_config(current_bank_number);
       }
-      digitalWrite(_MUTE_PIN, HIGH);
+      set_led_color(0, 0, 1.0); // White flash
+      delay(200);
+      set_led_color(bank_led_hue, 1.0, 1 - led_attenuation); // Restore bank color
       break;
     }
-    default:
+    default: {
       Serial.print("Unknown command: ");
       Serial.println(command);
       break;
+    }
   }
 }
 // the autogenerated code (see ./generator for the script)
@@ -996,70 +1008,85 @@ void loop() {
       }
     }
   }
+  // Handle preset and bank switching
   static elapsedMillis since_up_down_press;
   static bool long_press_handled = false;
-  static elapsedMillis since_long_press;
-  static bool skip_preset_switch = false; // New flag to skip preset switching
+  static elapsedMillis post_switch_debounce; // Debounce after preset switch
+  static bool preset_switch_active = false; // Tracks if a preset switch is in progress
   bool up_value = up_button.read_value();
   bool down_value = down_button.read_value();
   bool sharp_value = chord_matrix_array[0].read_value();
-  bool any_other_chord_active = false;
-  for (int i = 1; i < 22; i++) {
-    if (chord_matrix_array[i].read_value()) {
-      any_other_chord_active = true;
-      break;
-    }
+
+  // Debug button states
+  static bool last_up_value = false;
+  static bool last_down_value = false;
+  static bool last_sharp_value = false;
+  if (up_value != last_up_value || down_value != last_down_value || sharp_value != last_sharp_value) {
+    Serial.print("Button states - up: ");
+    Serial.print(up_value);
+    Serial.print(", down: ");
+    Serial.print(down_value);
+    Serial.print(", sharp: ");
+    Serial.println(sharp_value);
+    last_up_value = up_value;
+    last_down_value = down_value;
+    last_sharp_value = sharp_value;
   }
-  if (up_value && down_value) {
-    if (since_up_down_press > 2000 && !long_press_handled) {
-      if (sharp_value) {
-        Serial.println("Factory reset triggered");
-        control_command(1, 0);
-        set_led_color(0, 1.0, 1.0);
-        delay(500);
-        set_led_color(bank_led_hue, 1.0, 1 - led_attenuation);
-        long_press_handled = true;
-        since_long_press = 0;
-        skip_preset_switch = true; // Skip preset switching
-      } else if (any_other_chord_active) {
-        Serial.println("Resetting to user defaults");
-        control_command(5, 0);
-        set_led_color(120, 1.0, 1.0);
-        delay(500);
-        set_led_color(bank_led_hue, 1.0, 1 - led_attenuation);
-        long_press_handled = true;
-        since_long_press = 0;
-        skip_preset_switch = true;
-      } else {
-        Serial.print("Saving user default for bank: ");
-        Serial.println(current_bank_number);
-        save_config(current_bank_number, false, true);
-        set_led_color(240, 1.0, 1.0);
-        delay(500);
-        set_led_color(bank_led_hue, 1.0, 1 - led_attenuation);
-        long_press_handled = true;
-        since_long_press = 0;
-        skip_preset_switch = true;
+
+  // Handle User preset (up + sharp)
+  if (up_value && sharp_value && !down_value) {
+    if (since_up_down_press > 500 && !long_press_handled) {
+      Serial.println("Switching to User preset");
+      control_command(5, 0); // Load User preset for current bank
+      long_press_handled = true;
+      preset_switch_active = true;
+      post_switch_debounce = 0;
+      up_button.clear_transition(); // Prevent transition on release
+      // Debug: Print loaded preset parameters
+      Serial.print("Loaded User preset parameters: ");
+      for (int i = 0; i < parameter_size; i++) {
+        Serial.print(current_sysex_parameters[i]);
+        if (i < parameter_size - 1) Serial.print(",");
       }
+      Serial.println();
     }
-  } else {
-    since_up_down_press = 0;
-    long_press_handled = false;
-    skip_preset_switch = false; // Reset after buttons are released
   }
-  static elapsedMillis since_last_preset_change;
-  if ((since_long_press > 1500 || since_long_press == 0) && !skip_preset_switch) {
-    if (up_button.read_transition() == 1 && since_last_preset_change > 300) {
-      Serial.println("Switching to next preset");
+  // Handle Factory preset (down + sharp)
+  else if (down_value && sharp_value && !up_value) {
+    if (since_up_down_press > 500 && !long_press_handled) {
+      Serial.println("Switching to Factory preset");
+      control_command(1, 0); // Load Factory preset for current bank
+      long_press_handled = true;
+      preset_switch_active = true;
+      post_switch_debounce = 0;
+      down_button.clear_transition(); // Prevent transition on release
+      // Debug: Print loaded preset parameters
+      Serial.print("Loaded Factory preset parameters: ");
+      for (int i = 0; i < parameter_size; i++) {
+        Serial.print(current_sysex_parameters[i]);
+        if (i < parameter_size - 1) Serial.print(",");
+      }
+      Serial.println();
+    }
+  }
+  // Handle bank switching (up or down alone)
+  else if (!sharp_value && !preset_switch_active && post_switch_debounce > 1000) {
+    static elapsedMillis since_last_bank_change;
+    if (up_button.read_transition() == 1 && since_last_bank_change > 300) {
+      Serial.println("Switching to next bank");
+      Serial.print("Up transition detected, bank: ");
+      Serial.println(current_bank_number);
       if (!sysex_controler_connected && flag_save_needed) {
         save_config(current_bank_number, false, false);
       }
       current_bank_number = (current_bank_number + 1) % 12;
       load_config(current_bank_number);
-      since_last_preset_change = 0;
+      since_last_bank_change = 0;
     }
-    if (down_button.read_transition() == 1 && since_last_preset_change > 300) {
-      Serial.println("Switching to last preset");
+    if (down_button.read_transition() == 1 && since_last_bank_change > 300) {
+      Serial.println("Switching to previous bank");
+      Serial.print("Down transition detected, bank: ");
+      Serial.println(current_bank_number);
       if (!sysex_controler_connected && flag_save_needed) {
         save_config(current_bank_number, false, false);
       }
@@ -1068,8 +1095,21 @@ void loop() {
         current_bank_number = 11;
       }
       load_config(current_bank_number);
-      since_last_preset_change = 0;
+      since_last_bank_change = 0;
     }
+  }
+
+  // Reset combo state when all relevant buttons are released
+  if (!up_value && !down_value && !sharp_value && post_switch_debounce > 1000) {
+    if (preset_switch_active) {
+      Serial.println("Preset switch complete, resetting state");
+      up_button.clear_transition(); // Ensure no pending transitions
+      down_button.clear_transition();
+      preset_switch_active = false;
+      post_switch_debounce = 0;
+    }
+    since_up_down_press = 0;
+    long_press_handled = false;
   }
   if (rythm_mode) {
     for (int i = 0; i < 4; i++) {
