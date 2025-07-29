@@ -399,7 +399,6 @@ void control_command(uint8_t command, uint8_t parameter) {
     case 5: { // Reset to user defaults
       Serial.println("Resetting to user defaults");
       digitalWrite(_MUTE_PIN, LOW);
-      current_bank_number = 0;
       File user_default_entry = myfs.open(user_default_bank_name[current_bank_number]);
       if (user_default_entry) {
         Serial.print("Reading user default file: ");
@@ -953,8 +952,10 @@ void loop() {
     }
   }
 
-  //>>Handling user default and factory reset button combinations
+    //>>Handling user default and factory reset button combinations
   static elapsedMillis since_up_down_press;
+  static bool long_press_handled = false; // Flag to prevent repeated actions
+  static elapsedMillis since_long_press; // Timer for lockout after long press
   bool up_value = up_button.read_value();
   bool down_value = down_button.read_value();
   bool sharp_value = chord_matrix_array[0].read_value();
@@ -970,7 +971,7 @@ void loop() {
   }
 
   if (up_value && down_value) {
-    if (since_up_down_press > 2000) { // Long press > 2 seconds
+    if (since_up_down_press > 2000 && !long_press_handled) { // Long press > 2 seconds, only once
       if (sharp_value) {
         // Long press UP + DOWN + SHARP: Factory reset
         Serial.println("Factory reset triggered");
@@ -978,6 +979,8 @@ void loop() {
         set_led_color(0, 1.0, 1.0); // Flash red to indicate factory reset
         delay(500);
         set_led_color(bank_led_hue, 1.0, 1 - led_attenuation);
+        long_press_handled = true; // Mark action as handled
+        since_long_press = 0; // Start lockout timer
       } else if (any_other_chord_active) {
         // Long press UP + DOWN + any other chord button: Reset to user defaults
         Serial.println("Resetting to user defaults");
@@ -985,6 +988,8 @@ void loop() {
         set_led_color(120, 1.0, 1.0); // Flash green to indicate user default reset
         delay(500);
         set_led_color(bank_led_hue, 1.0, 1 - led_attenuation);
+        long_press_handled = true; // Mark action as handled
+        since_long_press = 0; // Start lockout timer
       } else {
         // Long press UP + DOWN: Save current bank as user default
         Serial.print("Saving user default for bank: ");
@@ -993,31 +998,36 @@ void loop() {
         set_led_color(240, 1.0, 1.0); // Flash blue to indicate save
         delay(500);
         set_led_color(bank_led_hue, 1.0, 1 - led_attenuation);
+        long_press_handled = true; // Mark action as handled
+        since_long_press = 0; // Start lockout timer
       }
     }
   } else {
     since_up_down_press = 0; // Reset timer if UP or DOWN is released
+    long_press_handled = false; // Reset flag when buttons are released
   }
 
   //>>Handling the preset change interface
-  if (up_button.read_transition() == 1) { // Trigger on release (HIGH to LOW)
-    Serial.println("Switching to next preset");
-    if (!sysex_controler_connected && flag_save_needed) {
-      save_config(current_bank_number, false, false); // Save to remember alternate pot position when not connected
+  if (since_long_press > 500 || since_long_press == 0) { // Allow preset changes only after 500ms lockout
+    if (up_button.read_transition() == 1) { // Trigger on release (HIGH to LOW)
+      Serial.println("Switching to next preset");
+      if (!sysex_controler_connected && flag_save_needed) {
+        save_config(current_bank_number, false, false); // Save to remember alternate pot position
+      }
+      current_bank_number = (current_bank_number + 1) % 12;
+      load_config(current_bank_number);
     }
-    current_bank_number = (current_bank_number + 1) % 12;
-    load_config(current_bank_number);
-  }
-  if (down_button.read_transition() == 1) { // Trigger on release (HIGH to LOW)
-    Serial.println("Switching to last preset");
-    if (!sysex_controler_connected && flag_save_needed) {
-      save_config(current_bank_number, false, false); // Save to remember alternate pot position when not connected
+    if (down_button.read_transition() == 1) { // Trigger on release (HIGH to LOW)
+      Serial.println("Switching to last preset");
+      if (!sysex_controler_connected && flag_save_needed) {
+        save_config(current_bank_number, false, false); // Save to remember alternate pot position
+      }
+      current_bank_number = (current_bank_number - 1);
+      if (current_bank_number == -1) {
+        current_bank_number = 11;
+      }
+      load_config(current_bank_number);
     }
-    current_bank_number = (current_bank_number - 1);
-    if (current_bank_number == -1) {
-      current_bank_number = 11;
-    }
-    load_config(current_bank_number);
   }
 
   //>>Handling the turning off of notes in rhythm mode (mandatory because we are missing one timer to do it cleanly)
