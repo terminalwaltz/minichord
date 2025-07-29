@@ -6,7 +6,7 @@ class MiniChordController {
       this.color_hue_sysex_adress = 20;
       this.base_adress_rythm = 220;
       this.potentiometer_memory_adress = [4, 5, 6];
-      this.modulation_adress = [14, 10, 12,16];
+      this.modulation_adress = [14, 10, 12, 16];
       this.volume_memory_adress = [2, 3];
       this.active_bank_number = -1;
       this.min_firmware_accepted = 0.02;
@@ -18,9 +18,9 @@ class MiniChordController {
       };
       this.onConnectionChange = null;
       this.onDataReceived = null;
-      this.json_reference="../json/minichord.json";
+      this.json_reference = "../json/minichord.json";
     }
-  
+
     // Initialize MIDI connection
     async initialize() {
       try {
@@ -36,7 +36,7 @@ class MiniChordController {
         return false;
       }
     }
-  
+
     // Handle MIDI access
     handleMIDIAccess(midiAccess) {
       console.log(">> Available outputs:");
@@ -78,7 +78,7 @@ class MiniChordController {
         console.log(">> minichord succesfully connected");
       }
     }
-  
+
     // Handle MIDI state changes
     handleStateChange(event) {
       console.log(">> MIDI state change received");
@@ -95,7 +95,7 @@ class MiniChordController {
         this.handleMIDIAccess(event.target);
       }
     }
-  
+
     // Process incoming MIDI data
     processCurrentData(midiMessage) {
       const data = midiMessage.data.slice(1);
@@ -108,7 +108,7 @@ class MiniChordController {
           bankNumber: data[2 * 1],
           firmwareVersion: 0
         };
-        
+
         for (var i = 2; i < this.parameter_size; i++) {
           const sysex_value = data[2 * i] + 128 * data[2 * i + 1];
           if (i == this.firmware_adress) {
@@ -127,26 +127,26 @@ class MiniChordController {
             processedData.parameters[i] = sysex_value;
           }
         }
-        
+
         this.active_bank_number = processedData.bankNumber;
-        
+
         // Override potentiometer and volume values
         for (const i of this.potentiometer_memory_adress) {
           this.sendParameter(i, 512);
           processedData.parameters[i] = 512;
         }
-        
+
         for (const i of this.volume_memory_adress) {
           this.sendParameter(i, 0.5 * 100);
           processedData.parameters[i] = 0.5 * 100;
         }
-        
+
         if (this.onDataReceived) {
           this.onDataReceived(processedData);
         }
       }
     }
-  
+
     // Send parameter to device
     sendParameter(address, value) {
       if (!this.device) return false;
@@ -158,7 +158,7 @@ class MiniChordController {
       this.device.send(sysex_message);
       return true;
     }
-  
+
     // Reset memory
     resetMemory() {
       if (!this.device) return false;
@@ -166,15 +166,23 @@ class MiniChordController {
       this.device.send(sysex_message);
       return true;
     }
-  
-    // Save current settings
+
+    // Save current settings as User preset
     saveCurrentSettings(bankNumber) {
       if (!this.device) return false;
-      const sysex_message = [0xF0, 0, 0, 2, bankNumber, 0xF7];
+      const sysex_message = [0xF0, 0, 0, 4, bankNumber, 0xF7]; // Use 0x04 for User preset save
       this.device.send(sysex_message);
       return true;
     }
-  
+
+    // Save as User Default
+    saveAsUserDefault(bankNumber) {
+      if (!this.device) return false;
+      const sysex_message = [0xF0, 0, 0, 4, bankNumber, 0xF7]; // Same as saveCurrentSettings
+      this.device.send(sysex_message);
+      return true;
+    }
+
     // Reset current bank
     resetCurrentBank() {
       if (!this.device || this.active_bank_number == -1) return false;
@@ -182,12 +190,12 @@ class MiniChordController {
       this.device.send(sysex_message);
       return true;
     }
-  
+
     // Check if device is connected
     isConnected() {
       return this.device !== false;
     }
-  
+
     // Get device info
     getDeviceInfo() {
       return {
@@ -199,7 +207,4 @@ class MiniChordController {
         floatMultiplier: this.float_multiplier
       };
     }
-
-    
-  }
-  
+}
