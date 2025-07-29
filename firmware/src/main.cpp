@@ -125,6 +125,11 @@ int16_t default_bank_sysex_parameters[preset_number][parameter_size] = {
 }; 
 int16_t current_sysex_parameters[parameter_size] = {0,0,50,50,512,512,512,1,0,0,192,100,49,100,184,100,157,100,0,0,0,0,0,0,0,0,0,0,0,67,0,0,0,0,0,0,0,0,0,0,0,16,0,8,8,12,42,1171,1,423,20,70,3,35,83,59,2658,1,0,0,0,0,0,0,0,1,1,1,100,1,1,0,1,1,1,1,14,0,0,70,0,0,0,100,0,6,0,0,755,195,23,61,29,0,0,0,0,162,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,13,8,100,16,0,200,0,0,50,0,50,18,32,50,0,0,10,66,353,65,995,1,569,16,141,32,83,28,48,54,1,0,0,0,56,0,389,0,20,0,0,0,0,1,1,1,0,1,1,0,1,1,1,1,0,0,0,70,0,0,0,100,0,38,0,0,80,16,4,94,753,474,70,5,100,100,100,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,16,0,6,6,32,0,6,0,16,0,6,6,32,0,6,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 const char *bank_name[preset_number] = {"a.txt", "b.txt", "c.txt", "d.txt", "e.txt", "f.txt", "g.txt", "h.txt", "i.txt", "j.txt", "k.txt", "l.txt"};
+const char *user_default_bank_name[preset_number] = {
+    "user_default_a.txt", "user_default_b.txt", "user_default_c.txt", "user_default_d.txt",
+    "user_default_e.txt", "user_default_f.txt", "user_default_g.txt", "user_default_h.txt",
+    "user_default_i.txt", "user_default_j.txt", "user_default_k.txt", "user_default_l.txt"
+};
 int8_t current_bank_number = 0;
 float bank_led_hue = 0;
 // Reserved SYSEX adresses
@@ -281,8 +286,9 @@ uint8_t midi_base_note=48; // for C3
 uint8_t midi_base_note_transposed=midi_base_note; //to handle note transposition
 
 //-->>FUNCTION THAT NEED ANNOUNCING
-void save_config(int bank_number, bool default_save);
+void save_config(int bank_number, bool default_save, bool user_default_save = false);
 void load_config(int bank_number);
+void deserialize(String input, int16_t data_array[]);
 void recalculate_timer();
 uint8_t calculate_note_harp(uint8_t string, bool slashed, bool sharp);
 uint8_t calculate_note_chord(uint8_t voice, bool slashed, bool sharp);
@@ -356,37 +362,67 @@ void set_led_color(float h, float s, float v) {
 //-->>UTILITIES FOR SYSEX HANDLING
 void control_command(uint8_t command, uint8_t parameter) {
   switch (command) {
-  case 0: // SIGNAL TO SEND BACK ALL DATA
-    Serial.println("Reporting all data");
-    int8_t midi_data_array[parameter_size * 2];
-    for (int i = 0; i < parameter_size; i++) {
-      midi_data_array[2 * i] = current_sysex_parameters[i] % 128;
-      midi_data_array[2 * i + 1] = current_sysex_parameters[i] / 128;
+    case 0: // Send all data
+      Serial.println("Reporting all data");
+      int8_t midi_data_array[parameter_size * 2];
+      for (int i = 0; i < parameter_size; i++) {
+        midi_data_array[2 * i] = current_sysex_parameters[i] % 128;
+        midi_data_array[2 * i + 1] = current_sysex_parameters[i] / 128;
+      }
+      usbMIDI.sendSysEx(parameter_size * 2, (const uint8_t *)&midi_data_array, 0);
+      break;
+    case 1: // Wipe memory to factory defaults
+      Serial.println("Wiping memory to factory defaults");
+      digitalWrite(_MUTE_PIN, LOW);
+      myfs.quickFormat();
+      current_bank_number = 0;
+      save_config(current_bank_number, true, false); // Save factory default
+      digitalWrite(_MUTE_PIN, HIGH);
+      break;
+    case 2: // Save current bank
+      Serial.print("Saving to bank: ");
+      Serial.println(parameter);
+      save_config(parameter, false, false);
+      break;
+    case 3: // Save factory default
+      Serial.print("Saving factory default to bank: ");
+      Serial.println(parameter);
+      current_bank_number = parameter;
+      save_config(parameter, true, false);
+      break;
+    case 4: // Save user default
+      Serial.print("Saving user default to bank: ");
+      Serial.println(parameter);
+      current_bank_number = parameter;
+      save_config(parameter, false, true);
+      break;
+    case 5: { // Reset to user defaults
+      Serial.println("Resetting to user defaults");
+      digitalWrite(_MUTE_PIN, LOW);
+      current_bank_number = 0;
+      File user_default_entry = myfs.open(user_default_bank_name[current_bank_number]);
+      if (user_default_entry) {
+        Serial.print("Reading user default file: ");
+        Serial.println(user_default_bank_name[current_bank_number]);
+        String data_string = "";
+        while (user_default_entry.available()) {
+          data_string += char(user_default_entry.read());
+        }
+        Serial.print("User default data: ");
+        Serial.println(data_string);
+        deserialize(data_string, current_sysex_parameters);
+        Serial.println("Deserialization complete");
+        save_config(current_bank_number, false, false); // Save to regular bank
+        user_default_entry.close();
+      } else {
+        Serial.println("No user default file found, loading factory default");
+        save_config(current_bank_number, true, false); // Fallback to factory default
+      }
+      digitalWrite(_MUTE_PIN, HIGH);
+      break;
     }
-    usbMIDI.sendSysEx(parameter_size * 2, (const uint8_t *)&midi_data_array,0);
-    break;
-  case 1: // SIGNAL TO WIPE MEMORY
-    Serial.println("Wiping memory");
-    digitalWrite(_MUTE_PIN, LOW); // muting the DAC
-    myfs.quickFormat();
-    current_bank_number = 0;
-    load_config(current_bank_number);
-    digitalWrite(_MUTE_PIN, HIGH); // unmuting the DAC
-    break;
-  case 2: // saving bank
-    Serial.print("Saving to bank: ");
-    Serial.println(parameter);
-    save_config(parameter, false);
-    break;
-  case 3: // setting bank to default
-    Serial.print("Saving to bank: ");
-    Serial.println(parameter);
-    current_bank_number = parameter;
-    save_config(parameter, true);
-    break;
-
-  default:
-    break;
+    default:
+      break;
   }
 }
 // the autogenerated code (see ./generator for the script)
@@ -677,48 +713,42 @@ void deserialize(String input, int16_t data_array[]) {
   }
 }
 
-void save_config(int bank_number, bool default_save) {
-  digitalWrite(_MUTE_PIN, LOW); // muting the DAC
-  current_bank_number=bank_number; //save to correctly write in the memory 
+void save_config(int bank_number, bool default_save, bool user_default_save) {
+  digitalWrite(_MUTE_PIN, LOW); // Mute DAC
+  current_bank_number = bank_number;
   AudioNoInterrupts();
-  // myfs.quickFormat();  // performs a quick format of the created di
-  myfs.remove(bank_name[bank_number]);
-  File dataFile = myfs.open(bank_name[bank_number], FILE_WRITE);
-
-  if (default_save) {
-    // if we need to put the default in memory
-    Serial.println("Writing the default file");
-    Serial.println(bank_name[bank_number]);
+  const char *filename = user_default_save ? user_default_bank_name[bank_number] : bank_name[bank_number];
+  myfs.remove(filename);
+  File dataFile = myfs.open(filename, FILE_WRITE);
+  if (default_save && !user_default_save) {
+    Serial.println("Writing factory default file");
     String return_data = serialize(default_bank_sysex_parameters[bank_number], parameter_size);
     dataFile.println(return_data);
   } else {
     Serial.println("Saving current settings");
-    for (u_int16_t i = 0; i < parameter_size; i++) {
-          Serial.println(current_sysex_parameters[i]);
-    }
     dataFile.println(serialize(current_sysex_parameters, parameter_size));
   }
   Serial.print("Saved preset: ");
   Serial.println(dataFile.name());
   dataFile.close();
-
-  load_config(current_bank_number); //we do a full reload to initialise values
-  
-  // add something to set config_bit in the parameters to zero
+  if (!user_default_save) {
+    load_config(current_bank_number); // Reload only for regular or factory presets
+  }
+  flag_save_needed = false;
   AudioInterrupts();
-  digitalWrite(_MUTE_PIN, HIGH); // unmuting the DAC
+  digitalWrite(_MUTE_PIN, HIGH); // Unmute DAC
 }
 
 void load_config(int bank_number) {
-  //digitalWrite(_MUTE_PIN, LOW); // muting the DAC
-  //Turn off chords notes
+  digitalWrite(_MUTE_PIN, LOW); // Mute DAC
+  // Turn off chord notes
   for (int i = 0; i < 4; i++) {
     chord_vibrato_envelope_array[i]->noteOff();
     chord_vibrato_dc_envelope_array[i]->noteOff();
     chord_envelope_array[i]->noteOff();
     chord_envelope_filter_array[i]->noteOff();
   }
-  trigger_chord = true; //to be ready to retrigger if needed
+  trigger_chord = true;
 
   File entry = myfs.open(bank_name[bank_number]);
   if (entry) {
@@ -732,23 +762,36 @@ void load_config(int bank_number) {
     entry.close();
   } else {
     entry.close();
-    Serial.print("No preset, writing factory default");
-    save_config(bank_number, true); // reboot with default value
+    Serial.println("No preset, checking user default");
+    File user_default_entry = myfs.open(user_default_bank_name[bank_number]);
+    if (user_default_entry) {
+      String data_string = "";
+      while (user_default_entry.available()) {
+        data_string += char(user_default_entry.read());
+      }
+      deserialize(data_string, current_sysex_parameters);
+      Serial.print("Loaded user default preset: ");
+      Serial.println(user_default_entry.name());
+      user_default_entry.close();
+    } else {
+      user_default_entry.close();
+      Serial.println("No user default, loading factory default");
+      save_config(bank_number, true, false); // Save and load factory default
+    }
   }
-  // Loading the potentiometer
-  chord_pot.setup(chord_volume_sysex, 100, current_sysex_parameters[chord_pot_alternate_control], current_sysex_parameters[chord_pot_alternate_range], current_sysex_parameters,current_sysex_parameters[chord_pot_alternate_storage],apply_audio_parameter,chord_pot_alternate_storage);
-  harp_pot.setup(harp_volume_sysex, 100, current_sysex_parameters[harp_pot_alternate_control], current_sysex_parameters[harp_pot_alternate_range], current_sysex_parameters,current_sysex_parameters[harp_pot_alternate_storage],apply_audio_parameter,harp_pot_alternate_storage);
-  mod_pot.setup(current_sysex_parameters[mod_pot_main_control], current_sysex_parameters[mod_pot_main_range], current_sysex_parameters[mod_pot_alternate_control], current_sysex_parameters[mod_pot_alternate_range], current_sysex_parameters,current_sysex_parameters[mod_pot_alternate_storage],apply_audio_parameter,mod_pot_alternate_storage);
-  Serial.println("pot setup done");
+  // Load potentiometer settings and apply parameters
+  chord_pot.setup(chord_volume_sysex, 100, current_sysex_parameters[chord_pot_alternate_control], current_sysex_parameters[chord_pot_alternate_range], current_sysex_parameters, current_sysex_parameters[chord_pot_alternate_storage], apply_audio_parameter, chord_pot_alternate_storage);
+  harp_pot.setup(harp_volume_sysex, 100, current_sysex_parameters[harp_pot_alternate_control], current_sysex_parameters[harp_pot_alternate_range], current_sysex_parameters, current_sysex_parameters[harp_pot_alternate_storage], apply_audio_parameter, harp_pot_alternate_storage);
+  mod_pot.setup(current_sysex_parameters[mod_pot_main_control], current_sysex_parameters[mod_pot_main_range], current_sysex_parameters[mod_pot_alternate_control], current_sysex_parameters[mod_pot_alternate_range], current_sysex_parameters, current_sysex_parameters[mod_pot_alternate_storage], apply_audio_parameter, mod_pot_alternate_storage);
   for (int i = 1; i < parameter_size; i++) {
     apply_audio_parameter(i, current_sysex_parameters[i]);
   }
-  control_command(0, 0); // tell itself to update the remote controller if present
+  control_command(0, 0); // Update remote controller
   chord_pot.force_update();
   harp_pot.force_update();
   mod_pot.force_update();
-  flag_save_needed=false;
-  //digitalWrite(_MUTE_PIN, HIGH); // unmuting the DAC
+  flag_save_needed = false;
+  digitalWrite(_MUTE_PIN, HIGH); // Unmute DAC
 }
 
 void setup() {
@@ -838,8 +881,8 @@ void loop() {
     processMIDI();
   }
   //Checking if the sysex is still connected 
-  if (sysex_controler_connected && (USB1_PORTSC1,7)){
-    sysex_controler_connected=false;
+  if (sysex_controler_connected && (USB1_PORTSC1, 7)) {
+    sysex_controler_connected = false;
   }
   //>>Updating the debouncers
   hold_button.set(digitalRead(HOLD_BUTTON_PIN));
@@ -847,82 +890,128 @@ void loop() {
   down_button.set(digitalRead(DOWN_PGM_PIN));
   LBO_flag.set(digitalRead(BATT_LBO_PIN));
   chord_matrix.update(chord_matrix_array);
-  //>>handling low battery blink indicator
+  //>>Handling low battery blink indicator
   uint8_t LBO_transition = LBO_flag.read_transition();
   if (LBO_transition == 1) {
-    led_blinking_flag=true;
+    led_blinking_flag = true;
   } else if (LBO_transition == 2) {
-    led_blinking_flag=false;
-    set_led_color(bank_led_hue, 1.0, 1-led_attenuation); // turn the led to the bank color
+    led_blinking_flag = false;
+    set_led_color(bank_led_hue, 1.0, 1 - led_attenuation); // Turn the LED to the bank color
   }
 
-   if (led_blinking_flag) {
-    set_led_color(bank_led_hue, 1.0, 0.6+0.4*sin(color_led_blink_val));
-    color_led_blink_val+=0.005;
-  } 
+  if (led_blinking_flag) {
+    set_led_color(bank_led_hue, 1.0, 0.6 + 0.4 * sin(color_led_blink_val));
+    color_led_blink_val += 0.005;
+  }
 
-
-  //>>Handlind the hold button functions
+  //>>Handling the hold button functions
   uint8_t hold_transition = hold_button.read_transition();
   if (hold_transition == 2) {
     if (!rythm_mode) {
       Serial.println("Switching mode");
       continuous_chord = !continuous_chord;
       analogWrite(RYTHM_LED_PIN, 255 * continuous_chord);
-      if(current_line==-1){ //if no button is currently pushed, we want to trigger when it happens in continuous chord mode. 
+      if (current_line == -1) { // If no button is currently pushed, we want to trigger when it happens in continuous chord mode
         trigger_chord = true;
       }
     } else {
-      //>>push tempo management
-      if (since_last_button_push > 100 && since_last_button_push < 2000) {  // check that we are inside the BPM range
-        rythm_bpm = (rythm_bpm*5.0 + 60 * 1000 / (since_last_button_push)) / 6.0; // we push for full note, with smoothing
-        Serial.print("Updating the BPM to:");
+      //>>Push tempo management
+      if (since_last_button_push > 100 && since_last_button_push < 2000) { // Check that we are inside the BPM range
+        rythm_bpm = (rythm_bpm * 5.0 + 60 * 1000 / since_last_button_push) / 6.0; // Push for full note, with smoothing
+        Serial.print("Updating the BPM to: ");
         Serial.println(rythm_bpm);
-        recalculate_timer();        
+        recalculate_timer();
         if (current_long_period) {
           rythm_timer.update(long_timer_period);
         } else {
           rythm_timer.update(short_timer_period);
         }
-
       }
     }
     since_last_button_push = 0;
   }
-  //>>Handling the long hold to switch to rythm mode
+  //>>Handling the long hold to switch to rhythm mode
   if (hold_transition == 1) {
     if (since_last_button_push > 800) {
-      Serial.println("Long push, switching rythm mode");
+      Serial.println("Long push, switching rhythm mode");
       rythm_mode = !rythm_mode;
       continuous_chord = false;
       analogWrite(RYTHM_LED_PIN, 255 * continuous_chord);
       if (rythm_mode) {
-        rythm_current_step=0;
-        Serial.println("Starting rythm timers");
+        rythm_current_step = 0;
+        Serial.println("Starting rhythm timers");
         rythm_timer.priority(254);
         rythm_timer.begin(rythm_tick_function, short_timer_period);
         rythm_timer_running = true;
         rythm_timer.update(long_timer_period);
-         current_long_period = true;
-      }else{
-        Serial.println("Stopping rythm timers");
+        current_long_period = true;
+      } else {
+        Serial.println("Stopping rhythm timers");
         rythm_timer.end();
         rythm_timer_running = false;
       }
     }
   }
+
+  //>>Handling user default and factory reset button combinations
+  static elapsedMillis since_up_down_press;
+  bool up_value = up_button.read_value();
+  bool down_value = down_button.read_value();
+  bool sharp_value = chord_matrix_array[0].read_value();
+  bool any_other_chord_active = false;
+  for (int i = 1; i < 22; i++) { // Check chord buttons 1–21 (excluding SHARP)
+    if (chord_matrix_array[i].read_value()) {
+      any_other_chord_active = true;
+      Serial.print("Chord button ");
+      Serial.print(i);
+      Serial.println(" active");
+      break;
+    }
+  }
+
+  if (up_value && down_value) {
+    if (since_up_down_press > 2000) { // Long press > 2 seconds
+      if (sharp_value) {
+        // Long press UP + DOWN + SHARP: Factory reset
+        Serial.println("Factory reset triggered");
+        control_command(1, 0); // Wipe memory to factory defaults
+        set_led_color(0, 1.0, 1.0); // Flash red to indicate factory reset
+        delay(500);
+        set_led_color(bank_led_hue, 1.0, 1 - led_attenuation);
+      } else if (any_other_chord_active) {
+        // Long press UP + DOWN + any other chord button: Reset to user defaults
+        Serial.println("Resetting to user defaults");
+        control_command(5, 0); // Reset to user defaults
+        set_led_color(120, 1.0, 1.0); // Flash green to indicate user default reset
+        delay(500);
+        set_led_color(bank_led_hue, 1.0, 1 - led_attenuation);
+      } else {
+        // Long press UP + DOWN: Save current bank as user default
+        Serial.print("Saving user default for bank: ");
+        Serial.println(current_bank_number);
+        save_config(current_bank_number, false, true);
+        set_led_color(240, 1.0, 1.0); // Flash blue to indicate save
+        delay(500);
+        set_led_color(bank_led_hue, 1.0, 1 - led_attenuation);
+      }
+    }
+  } else {
+    since_up_down_press = 0; // Reset timer if UP or DOWN is released
+  }
+
   //>>Handling the preset change interface
-  if (up_button.read_transition() > 1) {
+  if (up_button.read_transition() == 1) { // Trigger on release (HIGH to LOW)
     Serial.println("Switching to next preset");
-    if(!sysex_controler_connected && flag_save_needed){
-      save_config(current_bank_number, false); // saving to remember alternate pot position when not connnected
-    }    current_bank_number = (current_bank_number + 1) % 12;
+    if (!sysex_controler_connected && flag_save_needed) {
+      save_config(current_bank_number, false, false); // Save to remember alternate pot position when not connected
+    }
+    current_bank_number = (current_bank_number + 1) % 12;
     load_config(current_bank_number);
   }
-  if (down_button.read_transition() > 1) {
+  if (down_button.read_transition() == 1) { // Trigger on release (HIGH to LOW)
     Serial.println("Switching to last preset");
-    if(!sysex_controler_connected && flag_save_needed){
-      save_config(current_bank_number, false); // saving to remember alternate pot position when not connnected
+    if (!sysex_controler_connected && flag_save_needed) {
+      save_config(current_bank_number, false, false); // Save to remember alternate pot position when not connected
     }
     current_bank_number = (current_bank_number - 1);
     if (current_bank_number == -1) {
@@ -931,59 +1020,58 @@ void loop() {
     load_config(current_bank_number);
   }
 
-  //>>Handling the turning off of notes in rythm mode (mandatory because we are missing one timer to do it cleanly)
-  if(rythm_mode){
+  //>>Handling the turning off of notes in rhythm mode (mandatory because we are missing one timer to do it cleanly)
+  if (rythm_mode) {
     for (int i = 0; i < 4; i++) {
-      if(note_off_timing[i]>note_pushed_duration && chord_envelope_array[i]->isSustain()){
+      if (note_off_timing[i] > note_pushed_duration && chord_envelope_array[i]->isSustain()) {
         chord_vibrato_envelope_array[i]->noteOff();
         chord_vibrato_dc_envelope_array[i]->noteOff();
         chord_envelope_array[i]->noteOff();
         chord_envelope_filter_array[i]->noteOff();
-        if(chord_started_notes[i]!=0){
-          usbMIDI.sendNoteOff(chord_started_notes[i],chord_release_velocity,1,chord_port);
-          chord_started_notes[i]=0;
+        if (chord_started_notes[i] != 0) {
+          usbMIDI.sendNoteOff(chord_started_notes[i], chord_release_velocity, 1, chord_port);
+          chord_started_notes[i] = 0;
         }
       }
     }
   }
 
   //>>Handling the potentiometer mode
-  bool alternate = chord_matrix_array[0].read_value(); // use the sharp as potentiometer alt selection
-  flag_save_needed=chord_pot.update_parameter(alternate)||flag_save_needed;
-  flag_save_needed=harp_pot.update_parameter(alternate)||flag_save_needed;
-  flag_save_needed=mod_pot.update_parameter(alternate)||flag_save_needed;
+  bool alternate = chord_matrix_array[0].read_value(); // Use the sharp as potentiometer alt selection
+  flag_save_needed = chord_pot.update_parameter(alternate) || flag_save_needed;
+  flag_save_needed = harp_pot.update_parameter(alternate) || flag_save_needed;
+  flag_save_needed = mod_pot.update_parameter(alternate) || flag_save_needed;
 
   //>>Handling of chords logic
-  // If not button is active in touch mode, then turn everything off
-  //if more than three buttons in a line are on, we don't take it on
+  // If no button is active in touch mode, then turn everything off
+  // If more than three buttons in a line are on, we don't take it on
   if (!continuous_chord && !rythm_mode) {
     bool one_button_active = false;
-    int line_accumulator[3]={0,0,0};
+    int line_accumulator[3] = {0, 0, 0};
     for (int i = 1; i < 22; i++) {
-      bool active=chord_matrix_array[i].read_value();
+      bool active = chord_matrix_array[i].read_value();
       one_button_active = one_button_active || active;
-      if(active){
-        line_accumulator[i%3]+=1;
+      if (active) {
+        line_accumulator[i % 3] += 1;
       }
     }
-    if(line_accumulator[0]>2 ||line_accumulator[1]>2 || line_accumulator[2]>2){
-      current_line=-1;
-      inhibit_button=true;
+    if (line_accumulator[0] > 2 || line_accumulator[1] > 2 || line_accumulator[2] > 2) {
+      current_line = -1;
+      inhibit_button = true;
     }
-    if (!(one_button_active)) { 
-      inhibit_button=false; //we can resume working
+    if (!one_button_active) {
+      inhibit_button = false; // We can resume working
       AudioNoInterrupts();
       for (int i = 0; i < 4; i++) {
-        if(  chord_envelope_array[i]->isSustain()){
+        if (chord_envelope_array[i]->isSustain()) {
           chord_vibrato_envelope_array[i]->noteOff();
           chord_vibrato_dc_envelope_array[i]->noteOff();
           chord_envelope_array[i]->noteOff();
           chord_envelope_filter_array[i]->noteOff();
-          if(chord_started_notes[i]!=0){
-            usbMIDI.sendNoteOff(chord_started_notes[i],chord_release_velocity,1,chord_port);
-            chord_started_notes[i]=0;
+          if (chord_started_notes[i] != 0) {
+            usbMIDI.sendNoteOff(chord_started_notes[i], chord_release_velocity, 1, chord_port);
+            chord_started_notes[i] = 0;
           }
-
         }
       }
       AudioInterrupts();
@@ -991,9 +1079,9 @@ void loop() {
   }
   // If there is a line currently active, then start the update logic
   if (current_line >= 0) {
-    fundamental = current_line; // this is our active line
+    fundamental = current_line; // This is our active line
     slash_chord = false;
-    // let's check if we have a slashed chord and if that's the case, which
+    // Check if we have a slashed chord and, if so, which
     for (int i = 1; i < 22; i++) {
       bool value = chord_matrix_array[i].read_value();
       if (value) {
@@ -1004,24 +1092,27 @@ void loop() {
         }
       }
     }
-    // detect which buttons are active within our line
+    // Detect which buttons are active within our line
     bool button_maj = chord_matrix_array[1 + current_line * 3].read_value();
     bool button_min = chord_matrix_array[2 + current_line * 3].read_value();
     bool button_seventh = chord_matrix_array[3 + current_line * 3].read_value();
     if (!(button_maj || button_seventh || button_min)) {
-      current_line = -1; // if no button is, then line is no more active. we get out of that loop
-
+      current_line = -1; // If no button is active, then line is no longer active
     } else {
-      // depending on the active button identify the current chord
+      // Depending on the active button, identify the current chord
       if (button_maj && !button_min && !button_seventh) {
-        if (barry_harris_mode){current_chord = &maj_sixth;}
-        else
+        if (barry_harris_mode) {
+          current_chord = &maj_sixth;
+        } else {
           current_chord = &major;
+        }
       }
       if (!button_maj && button_min && !button_seventh) {
-        if (barry_harris_mode){current_chord = &min_sixth;}
-        else
+        if (barry_harris_mode) {
+          current_chord = &min_sixth;
+        } else {
           current_chord = &minor;
+        }
       }
       if (!button_maj && !button_min && button_seventh) {
         current_chord = &seventh;
@@ -1033,83 +1124,75 @@ void loop() {
         current_chord = &min_seventh;
       }
       if (button_maj && button_min && !button_seventh) {
-        if (barry_harris_mode){current_chord = &full_dim;}
-        else
+        if (barry_harris_mode) {
+          current_chord = &full_dim;
+        } else {
           current_chord = &dim;
-        
+        }
       }
       if (button_maj && button_min && button_seventh) {
         current_chord = &aug;
       }
-      // We can now calculate the target notes
+      // Calculate the target notes
       for (int i = 0; i < 7; i++) {
         current_chord_notes[i] = calculate_note_chord(i, slash_chord, sharp_active);
       }
-      // But that target should only be applied if we have an action from the user: the push of a button
+      // Apply the target only if there is an action from the user: the push of a button
       if (button_pushed) {
-        Serial.println("Updating frequences");
-        if (!rythm_mode && !trigger_chord && !retrigger_chord ) { // if we are not in rythm mode we can then directly apply the frequency
+        Serial.println("Updating frequencies");
+        if (!rythm_mode && !trigger_chord && !retrigger_chord) { // If not in rhythm mode, directly apply the frequency
           for (int i = 0; i < 4; i++) {
             set_chord_voice_frequency(i, current_chord_notes[i]);
           }
-        } else { // but in rythm mode it depends on were we are on the loop. We push it to a buffer
+        } else { // In rhythm mode, push to a buffer
           for (int i = 0; i < 7; i++) {
             current_applied_chord_notes[i] = current_chord_notes[i];
           }
-          //reboot rythm - Work to do here
-          /*
-          rythm_current_step=0;
-          rythm_timer.begin(rythm_tick_function,100);
-          last_key_change=0;*/
-
         }
-        for (int i = 0; i < 12; i++) { // In any case we update the harp frequency
+        for (int i = 0; i < 12; i++) { // Update the harp frequency
           current_harp_notes[i] = calculate_note_harp(i, slash_chord, sharp_active);
           if (change_held_strings) {
-            if(harp_started_notes[i]!=0){
-                usbMIDI.sendNoteOff(harp_started_notes[i],harp_release_velocity,1,harp_port);
-                harp_started_notes[i]=0;
-                usbMIDI.sendNoteOn(midi_base_note_transposed+current_harp_notes[i],harp_attack_velocity,1,harp_port);
-                harp_started_notes[i]=midi_base_note_transposed+current_harp_notes[i];}
-            
-            if (string_enveloppe_array[i]->isSustain()) { // change the frequency if we are in the sustain part
+            if (harp_started_notes[i] != 0) {
+              usbMIDI.sendNoteOff(harp_started_notes[i], harp_release_velocity, 1, harp_port);
+              harp_started_notes[i] = 0;
+              usbMIDI.sendNoteOn(midi_base_note_transposed + current_harp_notes[i], harp_attack_velocity, 1, harp_port);
+              harp_started_notes[i] = midi_base_note_transposed + current_harp_notes[i];
+            }
+            if (string_enveloppe_array[i]->isSustain()) { // Change the frequency if in the sustain part
               set_harp_voice_frequency(i, current_harp_notes[i]);
             }
-            
           }
         }
       }
-      if ((trigger_chord || (button_pushed && retrigger_chord)) && !rythm_mode) { // if there is a explicit signal to trigger the enveloppe, or we are in a situation where trigger is needed, we do it
-        Serial.println("trigger");
+      if ((trigger_chord || (button_pushed && retrigger_chord)) && !rythm_mode) { // If explicit trigger or retrigger needed
+        Serial.println("Trigger");
         note_timer[0].priority(253);
         note_timer[1].priority(253);
         note_timer[2].priority(253);
         note_timer[3].priority(253);
-
-        note_timer[0].begin([] { play_single_note(0, &note_timer[0]); }, 10+chord_retrigger_release*1000);          // those allow for delayed triggering
-        note_timer[1].begin([] { play_single_note(1, &note_timer[1]); }, 10 +chord_retrigger_release*1000+ inter_string_delay + random(random_delay));
-        note_timer[2].begin([] { play_single_note(2, &note_timer[2]); }, 10 + chord_retrigger_release*1000+inter_string_delay * 2 + random(random_delay));
-        note_timer[3].begin([] { play_single_note(3, &note_timer[3]); }, 10 + chord_retrigger_release*1000+inter_string_delay * 3 + random(random_delay));
+        note_timer[0].begin([] { play_single_note(0, &note_timer[0]); }, 10 + chord_retrigger_release * 1000);
+        note_timer[1].begin([] { play_single_note(1, &note_timer[1]); }, 10 + chord_retrigger_release * 1000 + inter_string_delay + random(random_delay));
+        note_timer[2].begin([] { play_single_note(2, &note_timer[2]); }, 10 + chord_retrigger_release * 1000 + inter_string_delay * 2 + random(random_delay));
+        note_timer[3].begin([] { play_single_note(3, &note_timer[3]); }, 10 + chord_retrigger_release * 1000 + inter_string_delay * 3 + random(random_delay));
         trigger_chord = false;
       }
-      button_pushed = false; // in any case after that loop, we can reset button pushed
+      button_pushed = false; // Reset button pushed
     }
   }
-  // Now let's read the button transitions
-  int sharp_transition = chord_matrix_array[0].read_transition(); // first the sharp
-  if (sharp_transition > 1 && current_line != -1) {               // want to trigger the button pushed, only if buttons are selected
+  // Read button transitions
+  int sharp_transition = chord_matrix_array[0].read_transition(); // First the sharp
+  if (sharp_transition > 1 && current_line != -1) { // Trigger button pushed only if buttons are selected
     button_pushed = true;
   }
-  sharp_active = chord_matrix_array[0].read_value(); // in any case we record the current value
-  for (int i = 1; i < 22; i++) {                     // now the rest of the chord buttons
+  sharp_active = chord_matrix_array[0].read_value(); // Record the current value
+  for (int i = 1; i < 22; i++) { // Now the rest of the chord buttons
     int value = chord_matrix_array[i].read_transition();
-    if (value > 1 && !inhibit_button) { // a button was indeed pushed
+    if (value > 1 && !inhibit_button) { // A button was pushed
       button_pushed = true;
-      Serial.println(" pushed");
+      Serial.println("Pushed");
       Serial.println(i);
-
       if (current_line == -1) {
-        current_line = (i - 1) / 3; // if no line is currently active, we have a new base line
+        current_line = (i - 1) / 3; // If no line is active, set new base line
         if (!continuous_chord) {
           trigger_chord = true;
         }
@@ -1117,11 +1200,11 @@ void loop() {
     }
   }
 
-  //>>Handling the harp functions, once the frequency array is defined the the chords
+  //>>Handling the harp functions, once the frequency array is defined
   harp_sensor.update(harp_array);
   for (int i = 0; i < 12; i++) {
     int value = harp_array[i].read_transition();
-    if (value ==2) {  
+    if (value == 2) {
       set_harp_voice_frequency(i, current_harp_notes[i]);
       AudioNoInterrupts();
       envelope_string_vibrato_lfo.noteOn();
@@ -1130,26 +1213,23 @@ void loop() {
       string_enveloppe_array[i]->noteOn();
       string_transient_envelope_array[i]->noteOn();
       AudioInterrupts();
-      if(harp_started_notes[i]!=0){
-        usbMIDI.sendNoteOff(harp_started_notes[i],harp_release_velocity,1,harp_port);
-        harp_started_notes[i]=0;
+      if (harp_started_notes[i] != 0) {
+        usbMIDI.sendNoteOff(harp_started_notes[i], harp_release_velocity, 1, harp_port);
+        harp_started_notes[i] = 0;
       }
-      usbMIDI.sendNoteOn(midi_base_note_transposed+current_harp_notes[i],harp_attack_velocity,1,harp_port);
-      harp_started_notes[i]=midi_base_note_transposed+current_harp_notes[i];
-
+      usbMIDI.sendNoteOn(midi_base_note_transposed + current_harp_notes[i], harp_attack_velocity, 1, harp_port);
+      harp_started_notes[i] = midi_base_note_transposed + current_harp_notes[i];
     }
-    //value = harp_array[i].read_value(); //weirdly if we use the debouncer some noteOff seems to be ignored !!!!but if we don't, then the noteoff slow down the envelope !!
     if (value == 1) {
       AudioNoInterrupts();
       string_enveloppe_array[i]->noteOff();
       string_transient_envelope_array[i]->noteOff();
       string_enveloppe_filter_array[i]->noteOff();
       AudioInterrupts();
-      if(harp_started_notes[i]!=0){
-        usbMIDI.sendNoteOff(harp_started_notes[i],harp_release_velocity,1,harp_port);
-        harp_started_notes[i]=0;
+      if (harp_started_notes[i] != 0) {
+        usbMIDI.sendNoteOff(harp_started_notes[i], harp_release_velocity, 1, harp_port);
+        harp_started_notes[i] = 0;
       }
-
     }
   }
 }
