@@ -882,86 +882,41 @@ void loop() {
   down_button.set(digitalRead(DOWN_PGM_PIN));
   LBO_flag.set(digitalRead(BATT_LBO_PIN));
   chord_matrix.update(chord_matrix_array);
-  //>>handling low battery blink indicator
-  uint8_t LBO_transition = LBO_flag.read_transition();
-  if (LBO_transition == 1) {
-    led_blinking_flag=true;
-  } else if (LBO_transition == 2) {
-    led_blinking_flag=false;
-    set_led_color(bank_led_hue, 1.0, 1-led_attenuation); // turn the led to the bank color
-  }
 
-  if (led_blinking_flag) {
-    set_led_color(bank_led_hue, 1.0, 0.6+0.4*sin(color_led_blink_val));
-    color_led_blink_val+=0.005;
-  } 
+  //>>Debug button states
+  Serial.print("Buttons: Up="); Serial.print(up_button.read_value());
+  Serial.print(" Down="); Serial.print(down_button.read_value());
+  Serial.print(" Chord=[");
+  for (int i = 1; i < 22; i += 3) {
+    Serial.print(chord_matrix_array[i].read_value()); Serial.print(",");
+  }
+  Serial.println("]");
 
-  //>>Handlind the hold button functions
-  uint8_t hold_transition = hold_button.read_transition();
-  if (hold_transition == 2) {
-    if (!rythm_mode) {
-      Serial.println("Switching mode");
-      continuous_chord = !continuous_chord;
-      analogWrite(RYTHM_LED_PIN, 255 * continuous_chord);
-      if(current_line==-1){ //if no button is currently pushed, we want to trigger when it happens in continuous chord mode. 
-        trigger_chord = true;
-      }
-    } else {
-      //>>push tempo management
-      if (since_last_button_push > 100 && since_last_button_push < 2000) {  // check that we are inside the BPM range
-        rythm_bpm = (rythm_bpm*5.0 + 60 * 1000 / (since_last_button_push)) / 6.0; // we push for full note, with smoothing
-        Serial.print("Updating the BPM to:");
-        Serial.println(rythm_bpm);
-        recalculate_timer();        
-        if (current_long_period) {
-          rythm_timer.update(long_timer_period);
-        } else {
-          rythm_timer.update(short_timer_period);
-        }
-      }
-    }
-    since_last_button_push = 0;
-  }
-  //>>Handling the long hold to switch to rythm mode
-  if (hold_transition == 1) {
-    if (since_last_button_push > 800) {
-      Serial.println("Long push, switching rythm mode");
-      rythm_mode = !rythm_mode;
-      continuous_chord = false;
-      analogWrite(RYTHM_LED_PIN, 255 * continuous_chord);
-      if (rythm_mode) {
-        rythm_current_step=0;
-        Serial.println("Starting rythm timers");
-        rythm_timer.priority(254);
-        rythm_timer.begin(rythm_tick_function, short_timer_period);
-        rythm_timer_running = true;
-        rythm_timer.update(long_timer_period);
-         current_long_period = true;
-      }else{
-        Serial.println("Stopping rythm timers");
-        rythm_timer.end();
-        rythm_timer_running = false;
-      }
-    }
-  }
-  //>>Handling the preset and key signature changes
+  //>>Handling preset changes
+  up_button.set(digitalRead(UP_PGM_PIN)); // Extra update for reliability
+  down_button.set(digitalRead(DOWN_PGM_PIN));
+  bool up_transition = up_button.read_transition() > 1 || up_button.read_value();
+  bool down_transition = down_button.read_transition() > 1 || down_button.read_value();
   bool up_held = up_button.read_value();
   bool down_held = down_button.read_value();
   bool preset_combo = up_held || down_held;
 
+  Serial.print("Preset check: Up_transition="); Serial.print(up_transition);
+  Serial.print(" Down_transition="); Serial.print(down_transition);
+  Serial.print(" Preset_combo="); Serial.println(preset_combo);
+
   if (!preset_combo) {
-    // Preset changes (Up/Down alone)
-    if (up_button.read_transition() > 1) {
+    if (up_transition) {
       Serial.println("Switching to next preset");
-      if(!sysex_controler_connected && flag_save_needed){
+      if (!sysex_controler_connected && flag_save_needed) {
         save_config(current_bank_number, false);
       }
       current_bank_number = (current_bank_number + 1) % 12;
       load_config(current_bank_number);
     }
-    if (down_button.read_transition() > 1) {
+    if (down_transition) {
       Serial.println("Switching to last preset");
-      if(!sysex_controler_connected && flag_save_needed){
+      if (!sysex_controler_connected && flag_save_needed) {
         save_config(current_bank_number, false);
       }
       current_bank_number = (current_bank_number - 1);
@@ -970,10 +925,29 @@ void loop() {
       }
       load_config(current_bank_number);
     }
-  } else {
-    // Key signature changes
+  }
+
+  //>>Handling key signature changes
+  if (preset_combo) {
     for (int i = 1; i < 22; i += 3) { // Major chord buttons: 1, 4, 7, 10, 13, 16, 19
-      if (chord_matrix_array[i].read_transition() > 1) { // Button pressed
+      bool button_pressed = (chord_matrix_array[i].read_transition() > 1);
+      // Recheck once if missed
+      if (!button_pressed) {
+        delayMicroseconds(100);
+        chord_matrix.update(chord_matrix_array);
+        button_pressed = (chord_matrix_array[i].read_transition() > 1 || chord_matrix_array[i].read_value());
+      }
+      if (button_pressed) {
+        // Recheck button states
+        delayMicroseconds(100);
+        up_held = up_button.read_value();
+        down_held = down_button.read_value();
+        bool still_held = chord_matrix_array[i].read_value();
+        Serial.print("Button detected: "); Serial.print(i);
+        Serial.print(" (still held: "); Serial.print(still_held); Serial.println(")");
+        
+        if (!still_held) continue; // Skip if button released
+
         int8_t key_index = -1;
         if (up_held && down_held) {
           key_index = button_to_key_signature[2][i]; // Natural
@@ -1023,6 +997,67 @@ void loop() {
     }
   }
 
+  //>>handling low battery blink indicator
+  uint8_t LBO_transition = LBO_flag.read_transition();
+  if (LBO_transition == 1) {
+    led_blinking_flag=true;
+  } else if (LBO_transition == 2) {
+    led_blinking_flag=false;
+    set_led_color(bank_led_hue, 1.0, 1-led_attenuation);
+  }
+
+  if (led_blinking_flag) {
+    set_led_color(bank_led_hue, 1.0, 0.6+0.4*sin(color_led_blink_val));
+    color_led_blink_val+=0.005;
+  } 
+
+  //>>Handlind the hold button functions
+  uint8_t hold_transition = hold_button.read_transition();
+  if (hold_transition == 2) {
+    if (!rythm_mode) {
+      Serial.println("Switching mode");
+      continuous_chord = !continuous_chord;
+      analogWrite(RYTHM_LED_PIN, 255 * continuous_chord);
+      if(current_line==-1){
+        trigger_chord = true;
+      }
+    } else {
+      if (since_last_button_push > 100 && since_last_button_push < 2000) {
+        rythm_bpm = (rythm_bpm*5.0 + 60 * 1000 / (since_last_button_push)) / 6.0;
+        Serial.print("Updating the BPM to:");
+        Serial.println(rythm_bpm);
+        recalculate_timer();        
+        if (current_long_period) {
+          rythm_timer.update(long_timer_period);
+        } else {
+          rythm_timer.update(short_timer_period);
+        }
+      }
+    }
+    since_last_button_push = 0;
+  }
+  if (hold_transition == 1) {
+    if (since_last_button_push > 800) {
+      Serial.println("Long push, switching rythm mode");
+      rythm_mode = !rythm_mode;
+      continuous_chord = false;
+      analogWrite(RYTHM_LED_PIN, 255 * continuous_chord);
+      if (rythm_mode) {
+        rythm_current_step=0;
+        Serial.println("Starting rythm timers");
+        rythm_timer.priority(254);
+        rythm_timer.begin(rythm_tick_function, short_timer_period);
+        rythm_timer_running = true;
+        rythm_timer.update(long_timer_period);
+        current_long_period = true;
+      }else{
+        Serial.println("Stopping rythm timers");
+        rythm_timer.end();
+        rythm_timer_running = false;
+      }
+    }
+  }
+
   //>>Handling the turning off of notes in rythm mode
   if(rythm_mode){
     for (int i = 0; i < 4; i++) {
@@ -1064,7 +1099,7 @@ void loop() {
       inhibit_button=false;
       AudioNoInterrupts();
       for (int i = 0; i < 4; i++) {
-        if(  chord_envelope_array[i]->isSustain()){
+        if(chord_envelope_array[i]->isSustain()){
           chord_vibrato_envelope_array[i]->noteOff();
           chord_vibrato_dc_envelope_array[i]->noteOff();
           chord_envelope_array[i]->noteOff();
