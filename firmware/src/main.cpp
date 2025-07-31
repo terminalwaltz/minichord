@@ -791,18 +791,14 @@ void setup() {
   Serial.println("Initialising audio parameters");
   AudioMemory(1200);
   //>>STATIC AUDIO PARAMETERS
-  // the waveshaper
   calculate_ws_array();
   chord_waveshape.shape(wave_shape, 257);
   string_waveshape.shape(wave_shape, 257);
-  //the base DC value for strings
   filter_dc.amplitude(1);
-  // the delay passthrough
   string_delay_mix.gain(0, 1);
   chord_delay_mix.gain(0, 1);
-  // simple mixers
-  string_vibrato_mixer.gain(0,0.5);
-  string_vibrato_mixer.gain(1,0.5);
+  string_vibrato_mixer.gain(0, 0.5);
+  string_vibrato_mixer.gain(1, 0.5);
   envelope_string_vibrato_dc.sustain(0);
   for (int i = 0; i < 3; i++) {
     string_mixer_array[i]->gain(0, 1);
@@ -819,49 +815,49 @@ void setup() {
     chord_voice_mixer_array[i]->gain(1, 1);
     chord_voice_mixer_array[i]->gain(2, 1);
     chord_noise_array[i]->amplitude(0.5);
-    chord_vibrato_mixer_array[i]->gain(0,0.5);
-    chord_vibrato_mixer_array[i]->gain(1,0.5);
-    chord_vibrato_dc_envelope_array[i]->sustain(0); //for the pitch bend no need for sustain
+    chord_vibrato_mixer_array[i]->gain(0, 0.5);
+    chord_vibrato_mixer_array[i]->gain(1, 0.5);
+    chord_vibrato_dc_envelope_array[i]->sustain(0);
     transient_full_mix.gain(i, 1);
     all_string_mix.gain(i, 1);
   }
-  for(int i=0;i<12;i++){
-    string_transient_envelope_array[i]->sustain(0);//don't need sustain for the transient
+  for (int i = 0; i < 12; i++) {
+    string_transient_envelope_array[i]->sustain(0);
   }
-  all_string_mix.gain(3,0.02); //for the transient
+  all_string_mix.gain(3, 0.02);
 
-  // initialising the rest of the hardware
+  // Initialising the hardware
   chord_matrix.setup();
   harp_sensor.setup();
   harp_sensor.recalibrate();
-  pinMode(BATT_LBO_PIN, INPUT);
-  pinMode(DOWN_PGM_PIN, INPUT);
-  pinMode(UP_PGM_PIN, INPUT);
-  pinMode(HOLD_BUTTON_PIN, INPUT);
+  pinMode(BATT_LBO_PIN, INPUT_PULLUP);
+  pinMode(DOWN_PGM_PIN, INPUT_PULLUP);
+  pinMode(UP_PGM_PIN, INPUT_PULLUP);
+  up_button.set_debounce(30000); // Set 30ms debounce
+  down_button.set_debounce(30000);
   if (continuous_chord) {
     analogWrite(RYTHM_LED_PIN, 255);
   }
-  // loading the preset
+  // Loading the preset
   Serial.println("Initialising filesystem");
-  if (!myfs.begin(1024 * 1024)) { // Need to check that size
+  if (!myfs.begin(1024 * 1024)) {
     Serial.printf("Error starting %s\n", "Program flash DISK");
     while (1) {
-      set_led_color(0, 1.0, 1.0); // turn red light
+      set_led_color(0, 1.0, 1.0); // Turn red light
     }
   }
   Serial.println("Loading the preset");
   load_config(current_bank_number);
-  // initializing the strings
+  // Initializing the strings
   for (int i = 0; i < 12; i++) {
     current_harp_notes[i] = calculate_note_harp(i, slash_chord, sharp_active);
   }
-  //Checking the battery 
+  // Checking the battery
   LBO_flag.set(digitalRead(BATT_LBO_PIN));
   uint8_t LBO_value = LBO_flag.read_value();
   if (LBO_value == 0) {
-    led_blinking_flag=true;
+    led_blinking_flag = true;
   }
-
 
   Serial.println("Initialisation complete");
   digitalWrite(_MUTE_PIN, HIGH);
@@ -883,38 +879,48 @@ void loop() {
   LBO_flag.set(digitalRead(BATT_LBO_PIN));
   chord_matrix.update(chord_matrix_array);
 
-  //>>Debug button states
-  Serial.print("Buttons: Up="); Serial.print(up_button.read_value());
-  Serial.print(" Down="); Serial.print(down_button.read_value());
-  Serial.print(" Chord=[");
-  for (int i = 1; i < 22; i += 3) {
-    Serial.print(chord_matrix_array[i].read_value()); Serial.print(",");
-  }
-  Serial.println("]");
-
   //>>Handling preset changes
-  up_button.set(digitalRead(UP_PGM_PIN)); // Extra update for reliability
+  static elapsedMillis last_preset_change = 0; // Track time since last preset change
+  up_button.set(digitalRead(UP_PGM_PIN)); // Extra update
   down_button.set(digitalRead(DOWN_PGM_PIN));
-  bool up_transition = up_button.read_transition() > 1 || up_button.read_value();
-  bool down_transition = down_button.read_transition() > 1 || down_button.read_value();
-  bool up_held = up_button.read_value();
-  bool down_held = down_button.read_value();
-  bool preset_combo = up_held || down_held;
+  uint8_t up_transition = up_button.read_transition();
+  uint8_t down_transition = down_button.read_transition();
+  bool any_chord_pressed = false;
+  for (int i = 1; i < 22; i += 3) {
+    if (chord_matrix_array[i].read_value()) {
+      any_chord_pressed = true;
+      break;
+    }
+  }
 
-  Serial.print("Preset check: Up_transition="); Serial.print(up_transition);
-  Serial.print(" Down_transition="); Serial.print(down_transition);
-  Serial.print(" Preset_combo="); Serial.println(preset_combo);
+  // Debug output only on transitions
+  if (up_transition || down_transition) {
+    Serial.print("Raw: Up="); Serial.print(digitalRead(UP_PGM_PIN));
+    Serial.print(" Down="); Serial.print(digitalRead(DOWN_PGM_PIN));
+    Serial.print(" | Buttons: Up="); Serial.print(up_button.read_value());
+    Serial.print(" Down="); Serial.print(down_button.read_value());
+    Serial.print(" Up_timer="); Serial.print(up_button.read_value() ? up_button.get_last_update() : 0);
+    Serial.print(" Down_timer="); Serial.print(down_button.read_value() ? down_button.get_last_update() : 0);
+    Serial.print(" Chord=[");
+    for (int i = 1; i < 22; i += 3) {
+      Serial.print(chord_matrix_array[i].read_value()); Serial.print(",");
+    }
+    Serial.print("] | Preset check: Up_transition="); Serial.print(up_transition);
+    Serial.print(" Down_transition="); Serial.print(down_transition);
+    Serial.print(" Any_chord_pressed="); Serial.println(any_chord_pressed);
+  }
 
-  if (!preset_combo) {
-    if (up_transition) {
+  if (last_preset_change > 300 && !any_chord_pressed) { // 300ms lockout
+    if (up_transition == 2) {
       Serial.println("Switching to next preset");
       if (!sysex_controler_connected && flag_save_needed) {
         save_config(current_bank_number, false);
       }
       current_bank_number = (current_bank_number + 1) % 12;
       load_config(current_bank_number);
+      last_preset_change = 0;
     }
-    if (down_transition) {
+    if (down_transition == 2) {
       Serial.println("Switching to last preset");
       if (!sysex_controler_connected && flag_save_needed) {
         save_config(current_bank_number, false);
@@ -924,21 +930,23 @@ void loop() {
         current_bank_number = 11;
       }
       load_config(current_bank_number);
+      last_preset_change = 0;
     }
   }
 
   //>>Handling key signature changes
-  if (preset_combo) {
+  bool up_held = up_button.read_value();
+  bool down_held = down_button.read_value();
+  bool preset_combo = up_held || down_held;
+  if (preset_combo && any_chord_pressed) {
     for (int i = 1; i < 22; i += 3) { // Major chord buttons: 1, 4, 7, 10, 13, 16, 19
       bool button_pressed = (chord_matrix_array[i].read_transition() > 1);
-      // Recheck once if missed
       if (!button_pressed) {
         delayMicroseconds(100);
         chord_matrix.update(chord_matrix_array);
         button_pressed = (chord_matrix_array[i].read_transition() > 1 || chord_matrix_array[i].read_value());
       }
       if (button_pressed) {
-        // Recheck button states
         delayMicroseconds(100);
         up_held = up_button.read_value();
         down_held = down_button.read_value();
@@ -946,7 +954,7 @@ void loop() {
         Serial.print("Button detected: "); Serial.print(i);
         Serial.print(" (still held: "); Serial.print(still_held); Serial.println(")");
         
-        if (!still_held) continue; // Skip if button released
+        if (!still_held) continue;
 
         int8_t key_index = -1;
         if (up_held && down_held) {
@@ -991,7 +999,7 @@ void loop() {
           }
         }
       }
-      if (chord_matrix_array[i].read_transition() == 1) { // Button released
+      if (chord_matrix_array[i].read_transition() == 1) {
         inhibit_button = false;
       }
     }
@@ -1224,7 +1232,7 @@ void loop() {
   harp_sensor.update(harp_array);
   for (int i = 0; i < 12; i++) {
     int value = harp_array[i].read_transition();
-    if (value ==2) {  
+    if (value == 2) {  
       set_harp_voice_frequency(i, current_harp_notes[i]);
       AudioNoInterrupts();
       envelope_string_vibrato_lfo.noteOn();
