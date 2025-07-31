@@ -787,7 +787,7 @@ void load_config(int bank_number) {
 }
 
 void setup() {
-  Serial.begin(9600);
+  Serial.begin(57600); // Lower baud rate to slow console
   Serial.println("Initialising audio parameters");
   AudioMemory(1200);
   //>>STATIC AUDIO PARAMETERS
@@ -833,7 +833,7 @@ void setup() {
   pinMode(BATT_LBO_PIN, INPUT_PULLUP);
   pinMode(DOWN_PGM_PIN, INPUT_PULLUP);
   pinMode(UP_PGM_PIN, INPUT_PULLUP);
-  up_button.set_debounce(30000); // Set 30ms debounce
+  up_button.set_debounce(30000); // 30ms debounce
   down_button.set_debounce(30000);
   if (continuous_chord) {
     analogWrite(RYTHM_LED_PIN, 255);
@@ -880,9 +880,7 @@ void loop() {
   chord_matrix.update(chord_matrix_array);
 
   //>>Handling preset changes
-  static elapsedMillis last_preset_change = 0; // Track time since last preset change
-  up_button.set(digitalRead(UP_PGM_PIN)); // Extra update
-  down_button.set(digitalRead(DOWN_PGM_PIN));
+  static elapsedMillis last_preset_change = 0;
   uint8_t up_transition = up_button.read_transition();
   uint8_t down_transition = down_button.read_transition();
   bool any_chord_pressed = false;
@@ -893,7 +891,7 @@ void loop() {
     }
   }
 
-  // Debug output only on transitions
+  // Debug output for preset transitions
   if (up_transition || down_transition) {
     Serial.print("Raw: Up="); Serial.print(digitalRead(UP_PGM_PIN));
     Serial.print(" Down="); Serial.print(digitalRead(DOWN_PGM_PIN));
@@ -910,7 +908,7 @@ void loop() {
     Serial.print(" Any_chord_pressed="); Serial.println(any_chord_pressed);
   }
 
-  if (last_preset_change > 300 && !any_chord_pressed) { // 300ms lockout
+  if (last_preset_change > 300 && !any_chord_pressed) {
     if (up_transition == 2) {
       Serial.println("Switching to next preset");
       if (!sysex_controler_connected && flag_save_needed) {
@@ -935,6 +933,8 @@ void loop() {
   }
 
   //>>Handling key signature changes
+  up_button.set(digitalRead(UP_PGM_PIN)); // Extra update for held detection
+  down_button.set(digitalRead(DOWN_PGM_PIN));
   bool up_held = up_button.read_value();
   bool down_held = down_button.read_value();
   bool preset_combo = up_held || down_held;
@@ -942,30 +942,40 @@ void loop() {
     for (int i = 1; i < 22; i += 3) { // Major chord buttons: 1, 4, 7, 10, 13, 16, 19
       bool button_pressed = (chord_matrix_array[i].read_transition() > 1);
       if (!button_pressed) {
-        delayMicroseconds(100);
-        chord_matrix.update(chord_matrix_array);
+        chord_matrix.update(chord_matrix_array); // Single update, no delay
         button_pressed = (chord_matrix_array[i].read_transition() > 1 || chord_matrix_array[i].read_value());
       }
       if (button_pressed) {
-        delayMicroseconds(100);
-        up_held = up_button.read_value();
-        down_held = down_button.read_value();
+        // Confirm held state with multiple samples
+        elapsedMillis hold_timer = 0;
         bool still_held = chord_matrix_array[i].read_value();
+        bool up_held_confirmed = up_held;
+        bool down_held_confirmed = down_held;
+        while (hold_timer < 50 && still_held) { // 50ms window
+          up_button.set(digitalRead(UP_PGM_PIN));
+          down_button.set(digitalRead(DOWN_PGM_PIN));
+          chord_matrix.update(chord_matrix_array);
+          up_held_confirmed = up_held_confirmed && up_button.read_value();
+          down_held_confirmed = down_held_confirmed && down_button.read_value();
+          still_held = chord_matrix_array[i].read_value();
+        }
         Serial.print("Button detected: "); Serial.print(i);
-        Serial.print(" (still held: "); Serial.print(still_held); Serial.println(")");
+        Serial.print(" (still held: "); Serial.print(still_held);
+        Serial.print(" up_held: "); Serial.print(up_held_confirmed);
+        Serial.print(" down_held: "); Serial.print(down_held_confirmed); Serial.println(")");
         
         if (!still_held) continue;
 
         int8_t key_index = -1;
-        if (up_held && down_held) {
+        if (up_held_confirmed && down_held_confirmed) {
           key_index = button_to_key_signature[2][i]; // Natural
           Serial.print("Up + Down + Chord: Setting key to ");
           Serial.println(key_names[key_index]);
-        } else if (up_held) {
+        } else if (up_held_confirmed) {
           key_index = button_to_key_signature[0][i]; // Sharp
           Serial.print("Up + Chord: Setting key to ");
           Serial.println(key_names[key_index]);
-        } else if (down_held) {
+        } else if (down_held_confirmed) {
           key_index = button_to_key_signature[1][i]; // Flat
           Serial.print("Down + Chord: Setting key to ");
           Serial.println(key_names[key_index]);
