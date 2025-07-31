@@ -906,174 +906,176 @@ void loop() {
     }
   }
 
-//>>Handling key signature changes
-up_button.set(digitalRead(UP_PGM_PIN));
-down_button.set(digitalRead(DOWN_PGM_PIN));
-bool up_held = up_button.read_value();
-bool down_held = down_button.read_value();
-bool preset_combo = up_held && down_held; // Require both Up and Down
-if (preset_combo && any_chord_pressed) {
-  // Key mapping: {B# (top), B (middle), Bb (bottom) for B column}
-  // Columns (hardware): B, E, A, D, G, C, F (user-facing: F, C, G, D, A, E, B)
-  // Maps to KeySig: C=0, G=1, D=2, A=3, E=4, B=5, F=6, Bb=7, Eb=8, Ab=9, Db=10, Gb=11
-  const int8_t key_map[22][3] = {
-    {-1, -1, -1}, // Button 0 (sharp)
-    {0, 5, 7},   // Button 1: B (major, top), B#=C(0), B=B(5), Bb=Bb(7)
-    {0, 5, 7},   // Button 2: B (minor, middle), B#=C(0), B=B(5), Bb=Bb(7)
-    {0, 5, 7},   // Button 3: B (seventh, bottom), B#=C(0), B=B(5), Bb=Bb(7)
-    {4, 6, 8},   // Button 4: E (major, top), E=E(4), E#=F(6), Eb=Eb(8)
-    {4, 6, 8},   // Button 5: E (minor, middle), E, E#, Eb
-    {4, 6, 8},   // Button 6: E (seventh, bottom), E, E#, Eb
-    {3, 7, 9},   // Button 7: A (major, top), A=A(3), A#=Bb(7), Ab=Ab(9)
-    {3, 7, 9},   // Button 8: A (minor, middle), A, A#, Ab
-    {3, 7, 9},   // Button 9: A (seventh, bottom), A, A#, Ab
-    {2, 8, 10},  // Button 10: D (major, top), D=D(2), D#=Eb(8), Db=Db(10)
-    {2, 8, 10},  // Button 11: D (minor, middle), D, D#, Db
-    {2, 8, 10},  // Button 12: D (seventh, bottom), D, D#, Db
-    {1, 9, 11},  // Button 13: G (major, top), G=G(1), G#=Ab(9), Gb=Gb(11)
-    {1, 9, 11},  // Button 14: G (minor, middle), G, G#, Gb
-    {1, 9, 11},  // Button 15: G (seventh, bottom), G, G#, Gb
-    {0, 10, 5},  // Button 16: C (major, top), C=C(0), C#=Db(10), Cb=B(5)
-    {0, 10, 5},  // Button 17: C (minor, middle), C, C#, Cb
-    {0, 10, 5},  // Button 18: C (seventh, bottom), C, C#, Cb
-    {6, 11, 4},  // Button 19: F (major, top), F=F(6), F#=Gb(11), Fb=E(4)
-    {6, 11, 4},  // Button 20: F (minor, middle), F, F#, Fb
-    {6, 11, 4}   // Button 21: F (seventh, bottom), F, F#, Fb
-  };
-  // Map key_names indices (0–20) to KeySig indices (0–11) for apply_audio_parameter
-  const int8_t key_name_to_sig[21] = {
-    0,  // C
-    10, // C# → Db
-    5,  // Cb → B
-    2,  // D
-    8,  // D# → Eb
-    10, // Db
-    4,  // E
-    6,  // E# → F
-    8,  // Eb
-    6,  // F
-    11, // F# → Gb
-    4,  // Fb → E
-    1,  // G
-    9,  // G# → Ab
-    11, // Gb
-    3,  // A
-    7,  // A# → Bb
-    9,  // Ab
-    5,  // B
-    0,  // B# → C
-    7   // Bb
-  };
-  const char* column_names[] = {"B", "E", "A", "D", "G", "C", "F"}; // Hardware order
-  for (int i = 1; i < 22; i++) { // Check all chord buttons
-    bool button_pressed = (chord_matrix_array[i].read_transition() > 1);
-    if (!button_pressed) {
-      chord_matrix.update(chord_matrix_array);
-      button_pressed = (chord_matrix_array[i].read_transition() > 1 || chord_matrix_array[i].read_value());
-    }
-    if (button_pressed) {
-      elapsedMillis hold_timer = 0;
-      bool still_held = chord_matrix_array[i].read_value();
-      bool up_held_confirmed = up_held;
-      bool down_held_confirmed = down_held;
-      while (hold_timer < 50 && still_held) {
-        up_button.set(digitalRead(UP_PGM_PIN));
-        down_button.set(digitalRead(DOWN_PGM_PIN));
+  //>>Handling key signature changes
+  up_button.set(digitalRead(UP_PGM_PIN));
+  down_button.set(digitalRead(DOWN_PGM_PIN));
+  bool up_held = up_button.read_value();
+  bool down_held = down_button.read_value();
+  bool preset_combo = up_held && down_held; // Require both Up and Down
+  if (preset_combo && any_chord_pressed) {
+    // Key mapping: {B# (top), B (middle), Bb (bottom) for B column}
+    // Columns (hardware): B, E, A, D, G, C, F (user-facing: F, C, G, D, A, E, B)
+    // Maps to KeySig: C=0, G=1, D=2, A=3, E=4, B=5, F=6, Bb=7, Eb=8, Ab=9, Db=10, Gb=11
+    const int8_t key_map[22][3] = {
+      {-1, -1, -1}, // Button 0 (sharp)
+      {0, 5, 7},   // Button 1: B (major, top), B#=C(0), B=B(5), Bb=Bb(7)
+      {0, 5, 7},   // Button 2: B (minor, middle), B#=C(0), B=B(5), Bb=Bb(7)
+      {0, 5, 7},   // Button 3: B (seventh, bottom), B#=C(0), B=B(5), Bb=Bb(7)
+      {4, 6, 8},   // Button 4: E (major, top), E=E(4), E#=F(6), Eb=Eb(8)
+      {4, 6, 8},   // Button 5: E (minor, middle), E, E#, Eb
+      {4, 6, 8},   // Button 6: E (seventh, bottom), E, E#, Eb
+      {3, 7, 9},   // Button 7: A (major, top), A=A(3), A#=Bb(7), Ab=Ab(9)
+      {3, 7, 9},   // Button 8: A (minor, middle), A, A#, Ab
+      {3, 7, 9},   // Button 9: A (seventh, bottom), A, A#, Ab
+      {2, 8, 10},  // Button 10: D (major, top), D=D(2), D#=Eb(8), Db=Db(10)
+      {2, 8, 10},  // Button 11: D (minor, middle), D, D#, Db
+      {2, 8, 10},  // Button 12: D (seventh, bottom), D, D#, Db
+      {1, 9, 11},  // Button 13: G (major, top), G=G(1), G#=Ab(9), Gb=Gb(11)
+      {1, 9, 11},  // Button 14: G (minor, middle), G, G#, Gb
+      {1, 9, 11},  // Button 15: G (seventh, bottom), G, G#, Gb
+      {0, 10, 5},  // Button 16: C (major, top), C=C(0), C#=Db(10), Cb=B(5)
+      {0, 10, 5},  // Button 17: C (minor, middle), C, C#, Cb
+      {0, 10, 5},  // Button 18: C (seventh, bottom), C, C#, Cb
+      {6, 11, 4},  // Button 19: F (major, top), F=F(6), F#=Gb(11), Fb=E(4)
+      {6, 11, 4},  // Button 20: F (minor, middle), F, F#, Fb
+      {6, 11, 4}   // Button 21: F (seventh, bottom), F, F#, Fb
+    };
+    // Map key_names indices (0–20) to KeySig indices (0–11) for apply_audio_parameter
+    const int8_t key_name_to_sig[21] = {
+      0,  // C
+      10, // C# → Db
+      5,  // Cb → B
+      2,  // D
+      8,  // D# → Eb
+      10, // Db
+      4,  // E
+      6,  // E# → F
+      8,  // Eb
+      6,  // F
+      11, // F# → Gb
+      4,  // Fb → E
+      1,  // G
+      9,  // G# → Ab
+      11, // Gb
+      3,  // A
+      7,  // A# → Bb
+      9,  // Ab
+      5,  // B
+      0,  // B# → C
+      7   // Bb
+    };
+    const char* column_names[] = {"B", "E", "A", "D", "G", "C", "F"}; // Hardware order
+    for (int i = 1; i < 22; i++) { // Check all chord buttons
+      bool button_pressed = (chord_matrix_array[i].read_transition() > 1);
+      if (!button_pressed) {
         chord_matrix.update(chord_matrix_array);
-        up_held_confirmed = up_held_confirmed && up_button.read_value();
-        down_held_confirmed = down_held_confirmed && down_button.read_value();
-        still_held = chord_matrix_array[i].read_value();
+        button_pressed = (chord_matrix_array[i].read_transition() > 1 || chord_matrix_array[i].read_value());
       }
-      Serial.print("Button detected: "); Serial.print(i);
-      Serial.print(" (still held: "); Serial.print(still_held);
-      Serial.print(" up_held: "); Serial.print(up_held_confirmed);
-      Serial.print(" down_held: "); Serial.print(down_held_confirmed);
-      Serial.print(" row: "); Serial.print((i - 1) % 3);
-      Serial.print(" column: "); Serial.print(column_names[(i - 1) / 3]); Serial.println(")");
-      
-      if (!still_held || !up_held_confirmed || !down_held_confirmed) continue;
+      if (button_pressed) {
+        elapsedMillis hold_timer = 0;
+        bool still_held = chord_matrix_array[i].read_value();
+        bool up_held_confirmed = up_held;
+        bool down_held_confirmed = down_held;
+        while (hold_timer < 50 && still_held) {
+          up_button.set(digitalRead(UP_PGM_PIN));
+          down_button.set(digitalRead(DOWN_PGM_PIN));
+          chord_matrix.update(chord_matrix_array);
+          up_held_confirmed = up_held_confirmed && up_button.read_value();
+          down_held_confirmed = down_held_confirmed && down_button.read_value();
+          still_held = chord_matrix_array[i].read_value();
+        }
+        Serial.print("Button detected: "); Serial.print(i);
+        Serial.print(" (still held: "); Serial.print(still_held);
+        Serial.print(" up_held: "); Serial.print(up_held_confirmed);
+        Serial.print(" down_held: "); Serial.print(down_held_confirmed);
+        Serial.print(" row: "); Serial.print((i - 1) % 3);
+        Serial.print(" column: "); Serial.print(column_names[(i - 1) / 3]); Serial.println(")");
+        
+        if (!still_held || !up_held_confirmed || !down_held_confirmed) continue;
 
-      int8_t key_index = -1; // For key_names (0–20)
-      int8_t key_sig_index = -1; // For KeySig (0–11)
-      int row = (i - 1) % 3; // Top (0, major), Middle (1, minor), Bottom (2, seventh)
-      int column = (i - 1) / 3; // Hardware column: B=0, E=1, A=2, D=3, G=4, C=5, F=6
-      if (row == 0) { // Top row (major) -> Sharp (B# for B column)
-        key_sig_index = key_map[i][0]; // B#=C(0)
-        key_index = (column == 0) ? 19 : // B# (B column)
-                   (column == 1) ? 7  : // E# (E column)
-                   (column == 2) ? 16 : // A# (A column)
-                   (column == 3) ? 4  : // D# (D column)
-                   (column == 4) ? 13 : // G# (G column)
-                   (column == 5) ? 1  : // C# (C column)
-                   10;                 // F# (F column)
-        Serial.print("Up + Down + "); Serial.print(column_names[column]); 
-        Serial.print(" Top Row: Setting key to "); Serial.print(key_names[key_index]);
-        Serial.print(" (KeySig: "); Serial.print(key_sig_index);
-        Serial.print(", Applied: "); Serial.print(key_name_to_sig[key_index]); Serial.println(")");
-      } else if (row == 1) { // Middle row (minor) -> Natural (B for B column)
-        key_sig_index = key_map[i][1]; // B=B(5)
-        key_index = (column == 0) ? 18 : // B
-                   (column == 1) ? 6  : // E
-                   (column == 2) ? 15 : // A
-                   (column == 3) ? 3  : // D
-                   (column == 4) ? 12 : // G
-                   (column == 5) ? 0  : // C
-                   9;                  // F
-        Serial.print("Up + Down + "); Serial.print(column_names[column]); 
-        Serial.print(" Middle Row: Setting key to "); Serial.print(key_names[key_index]);
-        Serial.print(" (KeySig: "); Serial.print(key_sig_index);
-        Serial.print(", Applied: "); Serial.print(key_name_to_sig[key_index]); Serial.println(")");
-      } else if (row == 2) { // Bottom row (seventh) -> Flat (Bb for B column)
-        key_sig_index = key_map[i][2]; // Bb=Bb(7)
-        key_index = (column == 0) ? 20 : // Bb (B column)
-                   (column == 1) ? 8  : // Eb (E column)
-                   (column == 2) ? 17 : // Ab (A column)
-                   (column == 3) ? 5  : // Db (D column)
-                   (column == 4) ? 14 : // Gb (G column)
-                   (column == 5) ? 2  : // Cb (C column)
-                   11;                 // Fb (F column)
-        Serial.print("Up + Down + "); Serial.print(column_names[column]); 
-        Serial.print(" Bottom Row: Setting key to "); Serial.print(key_names[key_index]);
-        Serial.print(" (KeySig: "); Serial.print(key_sig_index);
-        Serial.print(", Applied: "); Serial.print(key_name_to_sig[key_index]); Serial.println(")");
-      }
-      if (key_sig_index != -1) {
-        key_signature_selection = key_sig_index; // Set for downstream functions
-        apply_audio_parameter(35, key_name_to_sig[key_index]); // Use mapped KeySig index
-        Serial.print("Applied key signature: "); Serial.print(key_names[key_index]);
-        Serial.print(" (KeySig: "); Serial.print(key_name_to_sig[key_index]); Serial.println(")");
-        float key_hue = (float)key_index / 21.0 * 360.0; // For 21 key_names
-        set_led_color(key_hue, 1.0, 1.0);
-        color_led_blink_timer.begin([] {
-          set_led_color(bank_led_hue, 1.0, 1 - led_attenuation);
-          color_led_blink_timer.end();
-        }, 200000);
-        inhibit_button = true;
-        current_line = -1;
-        AudioNoInterrupts();
-        for (int j = 0; j < 4; j++) {
-          if (chord_envelope_array[j]->isSustain()) {
-            chord_vibrato_envelope_array[j]->noteOff();
-            chord_vibrato_dc_envelope_array[j]->noteOff();
-            chord_envelope_array[j]->noteOff();
-            chord_envelope_filter_array[j]->noteOff();
-            if (chord_started_notes[j] != 0) {
-              usbMIDI.sendNoteOff(chord_started_notes[j], chord_release_velocity, 1, chord_port);
-              chord_started_notes[j] = 0;
+        int8_t key_index = -1; // For key_names (0–20)
+        int8_t key_sig_index = -1; // For KeySig (0–11)
+        int row = (i - 1) % 3; // Top (0, major), Middle (1, minor), Bottom (2, seventh)
+        int column = (i - 1) / 3; // Hardware column: B=0, E=1, A=2, D=3, G=4, C=5, F=6
+        if (row == 0) { // Top row (major) -> Sharp (B# for B column)
+          key_sig_index = key_map[i][0]; // B#=C(0)
+          key_index = (column == 0) ? 19 : // B# (B column)
+                     (column == 1) ? 7  : // E# (E column)
+                     (column == 2) ? 16 : // A# (A column)
+                     (column == 3) ? 4  : // D# (D column)
+                     (column == 4) ? 13 : // G# (G column)
+                     (column == 5) ? 1  : // C# (C column)
+                     10;                 // F# (F column)
+          Serial.print("Up + Down + "); Serial.print(column_names[column]); 
+          Serial.print(" Top Row: Setting key to "); Serial.print(key_names[key_index]);
+          Serial.print(" (KeySig: "); Serial.print(key_sig_index);
+          Serial.print(", Applied: "); Serial.print(key_name_to_sig[key_index]); Serial.println(")");
+        } else if (row == 1) { // Middle row (minor) -> Natural (B for B column)
+          key_sig_index = key_map[i][1]; // B=B(5)
+          key_index = (column == 0) ? 18 : // B
+                     (column == 1) ? 6  : // E
+                     (column == 2) ? 15 : // A
+                     (column == 3) ? 3  : // D
+                     (column == 4) ? 12 : // G
+                     (column == 5) ? 0  : // C
+                     9;                  // F
+          Serial.print("Up + Down + "); Serial.print(column_names[column]); 
+          Serial.print(" Middle Row: Setting key to "); Serial.print(key_names[key_index]);
+          Serial.print(" (KeySig: "); Serial.print(key_sig_index);
+          Serial.print(", Applied: "); Serial.print(key_name_to_sig[key_index]); Serial.println(")");
+        } else if (row == 2) { // Bottom row (seventh) -> Flat (Bb for B column)
+          key_sig_index = key_map[i][2]; // Bb=Bb(7)
+          key_index = (column == 0) ? 20 : // Bb (B column)
+                     (column == 1) ? 8  : // Eb (E column)
+                     (column == 2) ? 17 : // Ab (A column)
+                     (column == 3) ? 5  : // Db (D column)
+                     (column == 4) ? 14 : // Gb (G column)
+                     (column == 5) ? 2  : // Cb (C column)
+                     11;                 // Fb (F column)
+          Serial.print("Up + Down + "); Serial.print(column_names[column]); 
+          Serial.print(" Bottom Row: Setting key to "); Serial.print(key_names[key_index]);
+          Serial.print(" (KeySig: "); Serial.print(key_sig_index);
+          Serial.print(", Applied: "); Serial.print(key_name_to_sig[key_index]); Serial.println(")");
+        }
+        if (key_sig_index != -1) {
+          key_signature_selection = key_sig_index; // Set for downstream functions
+          apply_audio_parameter(35, key_name_to_sig[key_index]); // Use mapped KeySig index
+          Serial.print("Applied key signature: "); Serial.print(key_names[key_index]);
+          Serial.print(" (KeySig: "); Serial.print(key_name_to_sig[key_index]); Serial.println(")");
+          float key_hue = (float)key_index / 21.0 * 360.0; // For 21 key_names
+          set_led_color(key_hue, 1.0, 1.0);
+          color_led_blink_timer.begin([] {
+            set_led_color(bank_led_hue, 1.0, 1 - led_attenuation);
+            color_led_blink_timer.end();
+          }, 200000);
+          AudioNoInterrupts();
+          for (int j = 0; j < 4; j++) {
+            if (chord_envelope_array[j]->isSustain()) {
+              chord_vibrato_envelope_array[j]->noteOff();
+              chord_vibrato_dc_envelope_array[j]->noteOff();
+              chord_envelope_array[j]->noteOff();
+              chord_envelope_filter_array[j]->noteOff();
+              if (chord_started_notes[j] != 0) {
+                usbMIDI.sendNoteOff(chord_started_notes[j], chord_release_velocity, 1, chord_port);
+                chord_started_notes[j] = 0;
+              }
             }
           }
-        }
-        AudioInterrupts();
-        if (!sysex_controler_connected) {
-          flag_save_needed = true;
+          AudioInterrupts();
+          current_line = -1; // Reset to allow new presses
+          trigger_chord = true; // Prepare for next press
+          button_pushed = false; // Clear pending press
+          inhibit_button = false; // Allow new presses
+          if (!sysex_controler_connected) {
+            flag_save_needed = true;
+          }
         }
       }
-    }
-    if (chord_matrix_array[i].read_transition() == 1) {
-      inhibit_button = false;
+      if (chord_matrix_array[i].read_transition() == 1) {
+        inhibit_button = false;
+      }
     }
   }
-}
 
   //>>handling low battery blink indicator
   uint8_t LBO_transition = LBO_flag.read_transition();
@@ -1088,7 +1090,6 @@ if (preset_combo && any_chord_pressed) {
     set_led_color(bank_led_hue, 1.0, 0.6+0.4*sin(color_led_blink_val));
     color_led_blink_val+=0.005;
   } 
-
 
   //>>Handlind the hold button functions
   uint8_t hold_transition = hold_button.read_transition();
@@ -1197,6 +1198,8 @@ if (preset_combo && any_chord_pressed) {
     }
   }
   // If there is a line currently active, then start the update logic
+  bool new_press_detected = false; // Track new button presses
+  int latest_button = -1; // Store latest button pressed
   if (current_line >= 0) {
     fundamental = current_line; // this is our active line
     slash_chord = false;
@@ -1215,10 +1218,18 @@ if (preset_combo && any_chord_pressed) {
     bool button_maj = chord_matrix_array[1 + current_line * 3].read_value();
     bool button_min = chord_matrix_array[2 + current_line * 3].read_value();
     bool button_seventh = chord_matrix_array[3 + current_line * 3].read_value();
-    if (!(button_maj || button_seventh || button_min)) {
-      current_line = -1; // if no button is, then line is no more active. we get out of that loop
-
+    if (continuous_chord) {
+      // In continuous mode, only reset current_line if no buttons are pressed and no new press is detected
+      if (!(button_maj || button_min || button_seventh) && !new_press_detected) {
+        current_line = -1;
+      }
     } else {
+      // In normal mode, reset if no buttons are pressed
+      if (!(button_maj || button_min || button_seventh)) {
+        current_line = -1;
+      }
+    }
+    if (current_line >= 0) { // Continue only if line is still active
       // depending on the active button identify the current chord
       if (button_maj && !button_min && !button_seventh) {
         if (barry_harris_mode){current_chord = &maj_sixth;}
@@ -1267,7 +1278,6 @@ if (preset_combo && any_chord_pressed) {
           rythm_current_step=0;
           rythm_timer.begin(rythm_tick_function,100);
           last_key_change=0;*/
-
         }
         for (int i = 0; i < 12; i++) { // In any case we update the harp frequency
           current_harp_notes[i] = calculate_note_harp(i, slash_chord, sharp_active);
@@ -1285,7 +1295,10 @@ if (preset_combo && any_chord_pressed) {
         }
       }
       if ((trigger_chord || (button_pushed && retrigger_chord)) && !rythm_mode) { // if there is a explicit signal to trigger the enveloppe, or we are in a situation where trigger is needed, we do it
-        Serial.println("trigger");
+        Serial.print("Triggering chord: current_line="); Serial.print(current_line);
+        Serial.print(" trigger_chord="); Serial.print(trigger_chord);
+        Serial.print(" button_pushed="); Serial.print(button_pushed);
+        Serial.print(" retrigger_chord="); Serial.println(retrigger_chord);
         note_timer[0].priority(253);
         note_timer[1].priority(253);
         note_timer[2].priority(253);
@@ -1305,19 +1318,25 @@ if (preset_combo && any_chord_pressed) {
     button_pushed = true;
   }
   sharp_active = chord_matrix_array[0].read_value(); // in any case we record the current value
-  for (int i = 1; i < 22; i++) {                     // now the rest of the chord buttons
+  // Scan for new button presses
+  for (int i = 1; i < 22; i++) { // now the rest of the chord buttons
     int value = chord_matrix_array[i].read_transition();
-    if (value > 1 && !inhibit_button) { // a button was indeed pushed
-      button_pushed = true;
-      Serial.println(" pushed");
-      Serial.println(i);
-      if (current_line == -1) {
-        current_line = (i - 1) / 3; // if no line is currently active, we have a new base line
-        if (!continuous_chord) {
-          trigger_chord = true;
-        }
-      }
+    if (value > 1) { // a button was indeed pushed
+      new_press_detected = true;
+      latest_button = i;
+      Serial.print("Button transition: i="); Serial.print(i);
+      Serial.print(" value="); Serial.print(value);
+      Serial.print(" time="); Serial.println(chord_matrix_array[i].get_last_update());
     }
+  }
+  if (new_press_detected) {
+    button_pushed = true;
+    int new_line = (latest_button - 1) / 3;
+    current_line = new_line; // Update to latest pressed button’s line
+    trigger_chord = true; // Force trigger for new press
+    inhibit_button = false; // Clear any inhibit
+    Serial.print("New press: button="); Serial.print(latest_button);
+    Serial.print(" new_line="); Serial.println(new_line);
   }
 
   //>>Handling the harp functions, once the frequency array is defined the the chords
