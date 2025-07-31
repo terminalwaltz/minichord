@@ -761,14 +761,18 @@ void setup() {
   Serial.println("Initialising audio parameters");
   AudioMemory(1200);
   //>>STATIC AUDIO PARAMETERS
+  // the waveshaper
   calculate_ws_array();
   chord_waveshape.shape(wave_shape, 257);
   string_waveshape.shape(wave_shape, 257);
+  //the base DC value for strings
   filter_dc.amplitude(1);
+  // the delay passthrough
   string_delay_mix.gain(0, 1);
   chord_delay_mix.gain(0, 1);
-  string_vibrato_mixer.gain(0, 0.5);
-  string_vibrato_mixer.gain(1, 0.5);
+  // simple mixers
+  string_vibrato_mixer.gain(0,0.5);
+  string_vibrato_mixer.gain(1,0.5);
   envelope_string_vibrato_dc.sustain(0);
   for (int i = 0; i < 3; i++) {
     string_mixer_array[i]->gain(0, 1);
@@ -785,18 +789,18 @@ void setup() {
     chord_voice_mixer_array[i]->gain(1, 1);
     chord_voice_mixer_array[i]->gain(2, 1);
     chord_noise_array[i]->amplitude(0.5);
-    chord_vibrato_mixer_array[i]->gain(0, 0.5);
-    chord_vibrato_mixer_array[i]->gain(1, 0.5);
-    chord_vibrato_dc_envelope_array[i]->sustain(0);
+    chord_vibrato_mixer_array[i]->gain(0,0.5);
+    chord_vibrato_mixer_array[i]->gain(1,0.5);
+    chord_vibrato_dc_envelope_array[i]->sustain(0); //for the pitch bend no need for sustain
     transient_full_mix.gain(i, 1);
     all_string_mix.gain(i, 1);
   }
-  for (int i = 0; i < 12; i++) {
-    string_transient_envelope_array[i]->sustain(0);
+  for(int i=0;i<12;i++){
+    string_transient_envelope_array[i]->sustain(0);//don't need sustain for the transient
   }
-  all_string_mix.gain(3, 0.02);
+  all_string_mix.gain(3,0.02); //for the transient
 
-  // Initialising the hardware
+  // initialising the rest of the hardware
   chord_matrix.setup();
   harp_sensor.setup();
   harp_sensor.recalibrate();
@@ -808,25 +812,25 @@ void setup() {
   if (continuous_chord) {
     analogWrite(RYTHM_LED_PIN, 255);
   }
-  // Loading the preset
+  // loading the preset
   Serial.println("Initialising filesystem");
-  if (!myfs.begin(1024 * 1024)) {
+  if (!myfs.begin(1024 * 1024)) { // Need to check that size
     Serial.printf("Error starting %s\n", "Program flash DISK");
     while (1) {
-      set_led_color(0, 1.0, 1.0); // Turn red light
+      set_led_color(0, 1.0, 1.0); // turn red light
     }
   }
   Serial.println("Loading the preset");
   load_config(current_bank_number);
-  // Initializing the strings
+  // initializing the strings
   for (int i = 0; i < 12; i++) {
     current_harp_notes[i] = calculate_note_harp(i, slash_chord, sharp_active);
   }
-  // Checking the battery
+  //Checking the battery 
   LBO_flag.set(digitalRead(BATT_LBO_PIN));
   uint8_t LBO_value = LBO_flag.read_value();
   if (LBO_value == 0) {
-    led_blinking_flag = true;
+    led_blinking_flag=true;
   }
 
   Serial.println("Initialisation complete");
@@ -1077,13 +1081,14 @@ if (preset_combo && any_chord_pressed) {
     led_blinking_flag=true;
   } else if (LBO_transition == 2) {
     led_blinking_flag=false;
-    set_led_color(bank_led_hue, 1.0, 1-led_attenuation);
+    set_led_color(bank_led_hue, 1.0, 1-led_attenuation); // turn the led to the bank color
   }
 
-  if (led_blinking_flag) {
+   if (led_blinking_flag) {
     set_led_color(bank_led_hue, 1.0, 0.6+0.4*sin(color_led_blink_val));
     color_led_blink_val+=0.005;
   } 
+
 
   //>>Handlind the hold button functions
   uint8_t hold_transition = hold_button.read_transition();
@@ -1092,12 +1097,13 @@ if (preset_combo && any_chord_pressed) {
       Serial.println("Switching mode");
       continuous_chord = !continuous_chord;
       analogWrite(RYTHM_LED_PIN, 255 * continuous_chord);
-      if(current_line==-1){
+      if(current_line==-1){ //if no button is currently pushed, we want to trigger when it happens in continuous chord mode. 
         trigger_chord = true;
       }
     } else {
-      if (since_last_button_push > 100 && since_last_button_push < 2000) {
-        rythm_bpm = (rythm_bpm*5.0 + 60 * 1000 / (since_last_button_push)) / 6.0;
+      //>>push tempo management
+      if (since_last_button_push > 100 && since_last_button_push < 2000) {  // check that we are inside the BPM range
+        rythm_bpm = (rythm_bpm*5.0 + 60 * 1000 / (since_last_button_push)) / 6.0; // we push for full note, with smoothing
         Serial.print("Updating the BPM to:");
         Serial.println(rythm_bpm);
         recalculate_timer();        
@@ -1110,6 +1116,7 @@ if (preset_combo && any_chord_pressed) {
     }
     since_last_button_push = 0;
   }
+  //>>Handling the long hold to switch to rythm mode
   if (hold_transition == 1) {
     if (since_last_button_push > 800) {
       Serial.println("Long push, switching rythm mode");
@@ -1132,7 +1139,7 @@ if (preset_combo && any_chord_pressed) {
     }
   }
 
-  //>>Handling the turning off of notes in rythm mode
+  //>>Handling the turning off of notes in rythm mode (mandatory because we are missing one timer to do it cleanly)
   if(rythm_mode){
     for (int i = 0; i < 4; i++) {
       if(note_off_timing[i]>note_pushed_duration && chord_envelope_array[i]->isSustain()){
@@ -1149,12 +1156,14 @@ if (preset_combo && any_chord_pressed) {
   }
 
   //>>Handling the potentiometer mode
-  bool alternate = chord_matrix_array[0].read_value();
+  bool alternate = chord_matrix_array[0].read_value(); // use the sharp as potentiometer alt selection
   flag_save_needed=chord_pot.update_parameter(alternate)||flag_save_needed;
   flag_save_needed=harp_pot.update_parameter(alternate)||flag_save_needed;
   flag_save_needed=mod_pot.update_parameter(alternate)||flag_save_needed;
 
   //>>Handling of chords logic
+  // If not button is active in touch mode, then turn everything off
+  //if more than three buttons in a line are on, we don't take it on
   if (!continuous_chord && !rythm_mode) {
     bool one_button_active = false;
     int line_accumulator[3]={0,0,0};
@@ -1165,12 +1174,12 @@ if (preset_combo && any_chord_pressed) {
         line_accumulator[i%3]+=1;
       }
     }
-    if(line_accumulator[0]>2 ||line_accumulator[1]>2 ||line_accumulator[2]>2){
+    if(line_accumulator[0]>2 ||line_accumulator[1]>2 || line_accumulator[2]>2){
       current_line=-1;
       inhibit_button=true;
     }
     if (!(one_button_active)) { 
-      inhibit_button=false;
+      inhibit_button=false; //we can resume working
       AudioNoInterrupts();
       for (int i = 0; i < 4; i++) {
         if(chord_envelope_array[i]->isSustain()){
@@ -1187,9 +1196,11 @@ if (preset_combo && any_chord_pressed) {
       AudioInterrupts();
     }
   }
+  // If there is a line currently active, then start the update logic
   if (current_line >= 0) {
-    fundamental = current_line;
+    fundamental = current_line; // this is our active line
     slash_chord = false;
+    // let's check if we have a slashed chord and if that's the case, which
     for (int i = 1; i < 22; i++) {
       bool value = chord_matrix_array[i].read_value();
       if (value) {
@@ -1200,12 +1211,15 @@ if (preset_combo && any_chord_pressed) {
         }
       }
     }
+    // detect which buttons are active within our line
     bool button_maj = chord_matrix_array[1 + current_line * 3].read_value();
     bool button_min = chord_matrix_array[2 + current_line * 3].read_value();
     bool button_seventh = chord_matrix_array[3 + current_line * 3].read_value();
     if (!(button_maj || button_seventh || button_min)) {
-      current_line = -1;
+      current_line = -1; // if no button is, then line is no more active. we get out of that loop
+
     } else {
+      // depending on the active button identify the current chord
       if (button_maj && !button_min && !button_seventh) {
         if (barry_harris_mode){current_chord = &maj_sixth;}
         else
@@ -1233,21 +1247,29 @@ if (preset_combo && any_chord_pressed) {
       if (button_maj && button_min && button_seventh) {
         current_chord = &aug;
       }
+      // We can now calculate the target notes
       for (int i = 0; i < 7; i++) {
         current_chord_notes[i] = calculate_note_chord(i, slash_chord, sharp_active);
       }
+      // But that target should only be applied if we have an action from the user: the push of a button
       if (button_pushed) {
         Serial.println("Updating frequences");
-        if (!rythm_mode && !trigger_chord && !retrigger_chord ) {
+        if (!rythm_mode && !trigger_chord && !retrigger_chord ) { // if we are not in rythm mode we can then directly apply the frequency
           for (int i = 0; i < 4; i++) {
             set_chord_voice_frequency(i, current_chord_notes[i]);
           }
-        } else {
+        } else { // but in rythm mode it depends on were we are on the loop. We push it to a buffer
           for (int i = 0; i < 7; i++) {
             current_applied_chord_notes[i] = current_chord_notes[i];
           }
+          //reboot rythm - Work to do here
+          /*
+          rythm_current_step=0;
+          rythm_timer.begin(rythm_tick_function,100);
+          last_key_change=0;*/
+
         }
-        for (int i = 0; i < 12; i++) {
+        for (int i = 0; i < 12; i++) { // In any case we update the harp frequency
           current_harp_notes[i] = calculate_note_harp(i, slash_chord, sharp_active);
           if (change_held_strings) {
             if(harp_started_notes[i]!=0){
@@ -1255,13 +1277,14 @@ if (preset_combo && any_chord_pressed) {
                 harp_started_notes[i]=0;
                 usbMIDI.sendNoteOn(midi_base_note_transposed+current_harp_notes[i],harp_attack_velocity,1,harp_port);
                 harp_started_notes[i]=midi_base_note_transposed+current_harp_notes[i];}
-            if (string_enveloppe_array[i]->isSustain()) {
+            
+            if (string_enveloppe_array[i]->isSustain()) { // change the frequency if we are in the sustain part
               set_harp_voice_frequency(i, current_harp_notes[i]);
             }
           }
         }
       }
-      if ((trigger_chord || (button_pushed && retrigger_chord)) && !rythm_mode) {
+      if ((trigger_chord || (button_pushed && retrigger_chord)) && !rythm_mode) { // if there is a explicit signal to trigger the enveloppe, or we are in a situation where trigger is needed, we do it
         Serial.println("trigger");
         note_timer[0].priority(253);
         note_timer[1].priority(253);
@@ -1273,28 +1296,31 @@ if (preset_combo && any_chord_pressed) {
         note_timer[3].begin([] { play_single_note(3, &note_timer[3]); }, 10 + chord_retrigger_release*1000+inter_string_delay * 3 + random(random_delay));
         trigger_chord = false;
       }
-      button_pushed = false;
+      button_pushed = false; // in any case after that loop, we can reset button pushed
     }
   }
-  int sharp_transition = chord_matrix_array[0].read_transition();
-  if (sharp_transition > 1 && current_line != -1) {
+  // Now let's read the button transitions
+  int sharp_transition = chord_matrix_array[0].read_transition(); // first the sharp
+  if (sharp_transition > 1 && current_line != -1) {               // want to trigger the button pushed, only if buttons are selected
     button_pushed = true;
   }
-  sharp_active = chord_matrix_array[0].read_value();
-  for (int i = 1; i < 22; i++) {
+  sharp_active = chord_matrix_array[0].read_value(); // in any case we record the current value
+  for (int i = 1; i < 22; i++) {                     // now the rest of the chord buttons
     int value = chord_matrix_array[i].read_transition();
-    if (value > 1 && !inhibit_button) {
+    if (value > 1 && !inhibit_button) { // a button was indeed pushed
       button_pushed = true;
       Serial.println(" pushed");
       Serial.println(i);
       if (current_line == -1) {
-        current_line = (i - 1) / 3;
+        current_line = (i - 1) / 3; // if no line is currently active, we have a new base line
         if (!continuous_chord) {
           trigger_chord = true;
         }
       }
     }
   }
+
+  //>>Handling the harp functions, once the frequency array is defined the the chords
   harp_sensor.update(harp_array);
   for (int i = 0; i < 12; i++) {
     int value = harp_array[i].read_transition();
@@ -1314,6 +1340,7 @@ if (preset_combo && any_chord_pressed) {
       usbMIDI.sendNoteOn(midi_base_note_transposed+current_harp_notes[i],harp_attack_velocity,1,harp_port);
       harp_started_notes[i]=midi_base_note_transposed+current_harp_notes[i];
     }
+    //value = harp_array[i].read_value(); //weirdly if we use the debouncer some noteOff seems to be ignored !!!!but if we don't, then the noteoff slow down the envelope !!
     if (value == 1) {
       AudioNoInterrupts();
       string_enveloppe_array[i]->noteOff();
