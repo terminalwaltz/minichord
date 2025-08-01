@@ -16,10 +16,14 @@ void debouncer::set(bool set_value) {
 }
 
 uint8_t debouncer::read_transition() {
-  if (flag && last_update > debounce_value) {
+if (flag == true && last_update > debounce_value) {
     flag = false;
     last_update = 0; // Reset timer after transition
-    return value ? 2 : 1;
+            if (value == true) {
+            return 2; // Press transition
+        } else {
+            return 1; // Release transition
+        }
   }
   return 0;
 }
