@@ -289,6 +289,8 @@ uint8_t calculate_note_chord(uint8_t voice, bool slashed, bool sharp);
 void set_chord_voice_frequency(uint8_t i, uint16_t current_note);
 void calculate_ws_array();
 void rythm_tick_function();
+void fetchAllPresets();
+void uploadAllPresets(const uint8_t *data, uint16_t length);
 
 //-->>LED HSV CALCULATION
 // function to calculate led RGB value, thank you SO
@@ -385,28 +387,10 @@ void control_command(uint8_t command, uint8_t parameter) {
       save_config(parameter, true);
       break;
     case 4: // DUMP ALL 12 PRESETS
-      Serial.println("Dumping all 12 presets");
-      int8_t all_presets[12 * parameter_size * 2];
-      for (int bank = 0; bank < 12; bank++) {
-        load_config(bank);
-        for (int i = 0; i < parameter_size; i++) {
-          all_presets[bank * parameter_size * 2 + 2 * i] = current_sysex_parameters[i] % 128;
-          all_presets[bank * parameter_size * 2 + 2 * i + 1] = current_sysex_parameters[i] / 128;
-        }
-      }
-      usbMIDI.sendSysEx(12 * parameter_size * 2, (const uint8_t *)&all_presets, 0);
-      load_config(current_bank_number);
+      fetchAllPresets();
       break;
     case 5: // UPLOAD ALL 12 PRESETS
-      Serial.println("Uploading all 12 presets");
-      for (int bank = 0; bank < 12; bank++) {
-        for (int i = 0; i < parameter_size; i++) {
-          int offset = bank * parameter_size * 2 + 2 * i;
-          current_sysex_parameters[i] = parameter[offset] + 128 * parameter[offset + 1];
-        }
-        save_config(bank, false);
-      }
-      load_config(current_bank_number);
+      uploadAllPresets(usbMIDI.getSysExArray(), usbMIDI.getSysExArrayLength());
       break;
     default:
       break;
@@ -758,6 +742,7 @@ void load_config(int bank_number) {
     Serial.print("No preset, writing factory default");
     save_config(bank_number, true); // reboot with default value
   }
+  
   // Loading the potentiometer
   chord_pot.setup(chord_volume_sysex, 100, current_sysex_parameters[chord_pot_alternate_control], current_sysex_parameters[chord_pot_alternate_range], current_sysex_parameters,current_sysex_parameters[chord_pot_alternate_storage],apply_audio_parameter,chord_pot_alternate_storage);
   harp_pot.setup(harp_volume_sysex, 100, current_sysex_parameters[harp_pot_alternate_control], current_sysex_parameters[harp_pot_alternate_range], current_sysex_parameters,current_sysex_parameters[harp_pot_alternate_storage],apply_audio_parameter,harp_pot_alternate_storage);
@@ -772,6 +757,96 @@ void load_config(int bank_number) {
   mod_pot.force_update();
   flag_save_needed=false;
   //digitalWrite(_MUTE_PIN, HIGH); // unmuting the DAC
+}
+
+void fetchAllPresets() {
+  Serial.println("Fetching all 12 presets");
+  digitalWrite(_MUTE_PIN, LOW); // Mute DAC to prevent audio glitches
+  AudioNoInterrupts(); // Disable audio interrupts during file operations
+
+  // Allocate buffer for all presets (12 banks * 256 parameters * 2 bytes each)
+  int8_t all_presets[12 * parameter_size * 2];
+
+  for (int bank = 0; bank < preset_number; bank++) {
+    // Load preset into current_sysex_parameters
+    File entry = myfs.open(bank_name[bank], FILE_READ);
+    if (entry) {
+      String data_string = "";
+      while (entry.available()) {
+        data_string += char(entry.read());
+      }
+      deserialize(data_string, current_sysex_parameters);
+      entry.close();
+      Serial.print("Read preset: ");
+      Serial.println(bank_name[bank]);
+    } else {
+      // If file doesn't exist, use default preset
+      Serial.print("Preset ");
+      Serial.print(bank_name[bank]);
+      Serial.println(" not found, using default");
+      for (int i = 0; i < parameter_size; i++) {
+        current_sysex_parameters[i] = default_bank_sysex_parameters[bank][i];
+      }
+    }
+
+    // Convert parameters to SysEx format (LSB, MSB)
+    for (int i = 0; i < parameter_size; i++) {
+      all_presets[bank * parameter_size * 2 + 2 * i] = current_sysex_parameters[i] % 128;
+      all_presets[bank * parameter_size * 2 + 2 * i + 1] = current_sysex_parameters[i] / 128;
+    }
+  }
+
+  // Send SysEx message
+  usbMIDI.sendSysEx(12 * parameter_size * 2, (const uint8_t *)all_presets, 0);
+  Serial.println("Sent all presets via SysEx");
+
+  // Restore current preset
+  load_config(current_bank_number);
+
+  AudioInterrupts();
+  digitalWrite(_MUTE_PIN, HIGH); // Unmute DAC
+}
+
+void uploadAllPresets(const uint8_t *data, uint16_t length) {
+  if (length != 12 * parameter_size * 2) {
+    Serial.print("Error: Expected ");
+    Serial.print(12 * parameter_size * 2);
+    Serial.print(" bytes, received ");
+    Serial.println(length);
+    return;
+  }
+
+  Serial.println("Uploading all 12 presets");
+  digitalWrite(_MUTE_PIN, LOW); // Mute DAC
+  AudioNoInterrupts();
+
+  for (int bank = 0; bank < preset_number; bank++) {
+    // Reconstruct parameters from SysEx data
+    for (int i = 0; i < parameter_size; i++) {
+      int offset = bank * parameter_size * 2 + 2 * i;
+      current_sysex_parameters[i] = data[offset] + 128 * data[offset + 1];
+    }
+
+    // Write to file
+    myfs.remove(bank_name[bank]); // Remove existing file
+    File dataFile = myfs.open(bank_name[bank], FILE_WRITE);
+    if (dataFile) {
+      String data_string = serialize(current_sysex_parameters, parameter_size);
+      dataFile.println(data_string);
+      dataFile.close();
+      Serial.print("Wrote preset: ");
+      Serial.println(bank_name[bank]);
+    } else {
+      Serial.print("Error: Failed to write preset ");
+      Serial.println(bank_name[bank]);
+    }
+  }
+
+  // Restore current preset
+  load_config(current_bank_number);
+
+  AudioInterrupts();
+  digitalWrite(_MUTE_PIN, HIGH); // Unmute DAC
 }
 
 void setup() {
