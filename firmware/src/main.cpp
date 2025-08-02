@@ -421,6 +421,7 @@ void processMIDI(void) {
       return;
     }
 
+    // Copy data to buffer
     if (sysex_buffer_pos + len <= SYSEX_BUFFER_SIZE) {
       memcpy(&sysex_buffer[sysex_buffer_pos], data, len);
       sysex_buffer_pos += len;
@@ -430,10 +431,17 @@ void processMIDI(void) {
       return;
     }
 
+    // Check if we have a complete SysEx message
     if (sysex_buffer_pos >= 6 && sysex_buffer[0] == 0xF0 && sysex_buffer[1] == 0 && sysex_buffer[2] == 0) {
       uint8_t command = sysex_buffer[3];
       uint8_t parameter = sysex_buffer[4];
-      if (command == 2 && sysex_buffer_pos == 516 && sysex_buffer[515] == 0xF7) {
+
+      // For command 2, wait for 516 bytes including F7
+      if (command == 2 && sysex_buffer_pos >= 516 && sysex_buffer[515] == 0xF7) {
+        if (sysex_buffer_pos > 516) {
+          Serial.print("Warning: Extra data received for command 2, processing 516 bytes, total: ");
+          Serial.println(sysex_buffer_pos);
+        }
         Serial.print("Processing preset upload for bank: ");
         Serial.println(parameter);
         for (int i = 0; i < parameter_size; i++) {
@@ -442,6 +450,10 @@ void processMIDI(void) {
         }
         control_command(command, parameter);
         sysex_buffer_pos = 0;
+      } else if (command == 2 && sysex_buffer_pos < 516) {
+        Serial.print("Waiting for more data for command 2, current length: ");
+        Serial.println(sysex_buffer_pos);
+        return; // Wait for more fragments
       } else if (command == 2) {
         Serial.print("Error: Expected 516 bytes for command 2, got ");
         Serial.println(sysex_buffer_pos);
