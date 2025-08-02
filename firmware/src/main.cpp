@@ -412,6 +412,8 @@ void processMIDI(void) {
       Serial.print(data[i], HEX);
       Serial.print(" ");
     }
+    Serial.print("Last byte: ");
+    Serial.println(data[len - 1], HEX);
     Serial.println();
 
     if (len == 0 || len > SYSEX_BUFFER_SIZE) {
@@ -421,7 +423,12 @@ void processMIDI(void) {
       return;
     }
 
-    // Copy data to buffer
+    // Reset buffer if new message starts
+    if (data[0] == 0xF0) {
+      sysex_buffer_pos = 0;
+    }
+
+    // Copy data
     if (sysex_buffer_pos + len <= SYSEX_BUFFER_SIZE) {
       memcpy(&sysex_buffer[sysex_buffer_pos], data, len);
       sysex_buffer_pos += len;
@@ -431,47 +438,41 @@ void processMIDI(void) {
       return;
     }
 
-    // Check if we have a complete SysEx message
+    // Process only if we assume a single message or adjust expectation
     if (sysex_buffer_pos >= 6 && sysex_buffer[0] == 0xF0 && sysex_buffer[1] == 0 && sysex_buffer[2] == 0) {
       uint8_t command = sysex_buffer[3];
       uint8_t parameter = sysex_buffer[4];
 
-      // For command 2, wait for 516 bytes including F7
-      if (command == 2 && sysex_buffer_pos >= 516 && sysex_buffer[515] == 0xF7) {
-        if (sysex_buffer_pos > 516) {
-          Serial.print("Warning: Extra data received for command 2, processing 516 bytes, total: ");
+      if (command == 2) {
+        // Temporarily accept 290 bytes if it’s all we get, adjust later
+        if (sysex_buffer_pos >= 290) { // Check minimum usable data
+          Serial.print("Processing partial preset upload for bank: ");
+          Serial.println(parameter);
+          // Process as much as we have, up to 256 parameters
+          int params_to_process = min((sysex_buffer_pos - 5) / 2, parameter_size);
+          for (int i = 0; i < params_to_process; i++) {
+            int offset = 5 + 2 * i;
+            if (offset + 1 < sysex_buffer_pos) {
+              current_sysex_parameters[i] = sysex_buffer[offset] + (sysex_buffer[offset + 1] << 7);
+            }
+          }
+          control_command(command, parameter);
+          sysex_buffer_pos = 0;
+        } else {
+          Serial.print("Waiting for more data, current length: ");
           Serial.println(sysex_buffer_pos);
+          return;
         }
-        Serial.print("Processing preset upload for bank: ");
-        Serial.println(parameter);
-        for (int i = 0; i < parameter_size; i++) {
-          int offset = 5 + 2 * i;
-          current_sysex_parameters[i] = sysex_buffer[offset] + (sysex_buffer[offset + 1] << 7);
-        }
-        control_command(command, parameter);
-        sysex_buffer_pos = 0;
-      } else if (command == 2 && sysex_buffer_pos < 516) {
-        Serial.print("Waiting for more data for command 2, current length: ");
-        Serial.println(sysex_buffer_pos);
-        return; // Wait for more fragments
-      } else if (command == 2) {
-        Serial.print("Error: Expected 516 bytes for command 2, got ");
-        Serial.println(sysex_buffer_pos);
-        sysex_buffer_pos = 0;
       } else if (sysex_buffer_pos == 6 && sysex_buffer[5] == 0xF7) {
         control_command(command, parameter);
         sysex_buffer_pos = 0;
       } else {
-        Serial.println("Error: Malformed SysEx message");
+        Serial.println("Error: Incomplete or malformed SysEx message");
         sysex_buffer_pos = 0;
       }
-    } else {
-      Serial.println("Error: Invalid SysEx format");
-      sysex_buffer_pos = 0;
     }
     return;
   }
-
   if (sysex_buffer_pos > 0) {
     Serial.println("Non-SysEx message received, resetting buffer");
     sysex_buffer_pos = 0;
