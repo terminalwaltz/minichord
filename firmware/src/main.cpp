@@ -361,15 +361,31 @@ uint16_t sysex_buffer_pos = 0;
 //-->>UTILITIES FOR SYSEX HANDLING
 void control_command(uint8_t command, uint8_t parameter) {
   switch (command) {
-    case 0: // SIGNAL TO SEND BACK ALL DATA
-      Serial.println("Reporting all data");
-      int8_t midi_data_array[parameter_size * 2];
+  case 0: // SIGNAL TO SEND CURRENT BANK DATA
+    Serial.print("Reporting current bank: ");
+    Serial.println(current_bank_number);
+    {
+      uint8_t sysex[516];
+      sysex[0] = 0xF0;
+      sysex[1] = 0x00;
+      sysex[2] = 0x00;
+      sysex[3] = 0x02;
+      sysex[4] = current_bank_number;
       for (int i = 0; i < parameter_size; i++) {
-        midi_data_array[2 * i] = current_sysex_parameters[i] % 128;
-        midi_data_array[2 * i + 1] = current_sysex_parameters[i] / 128;
+        uint16_t value = current_sysex_parameters[i];
+        sysex[5 + 2 * i] = value & 0x7F;
+        sysex[5 + 2 * i + 1] = (value >> 7) & 0x7F;
       }
-      usbMIDI.sendSysEx(parameter_size * 2, (const uint8_t *)&midi_data_array, 0);
-      break;
+      sysex[515] = 0xF7;
+      usbMIDI.sendSysEx(516, sysex, true);
+      Serial.print("Sent single bank SysEx, first 10 bytes: ");
+      for (int i = 0; i < 10; i++) {
+        Serial.print(sysex[i], HEX);
+        Serial.print(" ");
+      }
+      Serial.println();
+    }
+    break;
     case 1: // SIGNAL TO WIPE MEMORY
       Serial.println("Wiping memory");
       digitalWrite(_MUTE_PIN, LOW);
@@ -409,51 +425,89 @@ void processMIDI(void) {
 
     Serial.print("Received SysEx message, length: ");
     Serial.println(len);
-    Serial.print("First 6 bytes: ");
-    for (int i = 0; i < min(6, len); i++) {
+    Serial.print("First 10 bytes of chunk: ");
+    for (int i = 0; i < min(10, len); i++) {
       Serial.print(data[i], HEX);
       Serial.print(" ");
     }
-    Serial.print("Last byte: ");
-    Serial.println(data[len - 1], HEX);
     Serial.println();
 
-    if (len == 0 || len > SYSEX_BUFFER_SIZE) {
-      Serial.print("Error: Invalid SysEx length received: ");
+    // Prevent buffer overflow
+    if (len == 0 || sysex_buffer_pos + len > SYSEX_BUFFER_SIZE) {
+      Serial.print("Error: Invalid SysEx length or buffer overflow: ");
       Serial.println(len);
       sysex_buffer_pos = 0;
       return;
     }
 
-    // Reset buffer if new F0 and previous message is incomplete or timed out
-    if (data[0] == 0xF0 && sysex_buffer_pos > 0) {
-      if (sysex_buffer_pos >= 516 || (millis() - last_sysex_time > 1000)) {
-        Serial.println("Warning: New SysEx message started, resetting incomplete buffer");
-        sysex_buffer_pos = 0;
-      } else {
-        Serial.println("Warning: New F0 received during accumulation, appending as continuation");
-      }
-    }
-
     // Copy data to buffer
-    if (sysex_buffer_pos + len <= SYSEX_BUFFER_SIZE) {
-      memcpy(&sysex_buffer[sysex_buffer_pos], data, len);
-      sysex_buffer_pos += len;
-    } else {
-      Serial.println("Error: SysEx buffer overflow");
-      sysex_buffer_pos = 0;
-      return;
-    }
+    memcpy(&sysex_buffer[sysex_buffer_pos], data, len);
+    sysex_buffer_pos += len;
+    last_sysex_time = millis();
 
-    last_sysex_time = millis(); // Update timestamp for timeout
+    // Process all complete messages in the buffer
+    while (sysex_buffer_pos >= 6) { // Minimum SysEx length
+      if (sysex_buffer[0] != 0xF0) {
+        Serial.println("Error: SysEx message does not start with F0");
+        // Shift buffer to find next F0
+        int next_f0 = -1;
+        for (int i = 1; i < sysex_buffer_pos; i++) {
+          if (sysex_buffer[i] == 0xF0) {
+            next_f0 = i;
+            break;
+          }
+        }
+        if (next_f0 >= 0) {
+          memmove(sysex_buffer, sysex_buffer + next_f0, sysex_buffer_pos - next_f0);
+          sysex_buffer_pos -= next_f0;
+        } else {
+          sysex_buffer_pos = 0;
+        }
+        continue;
+      }
 
-    // Process message if complete or partial bulk upload
-    if (sysex_buffer_pos >= 6 && sysex_buffer[0] == 0xF0) {
-      // Individual parameter update (6 bytes: F0 addr_L addr_H val_L val_H F7)
-      if (sysex_buffer_pos == 6 && sysex_buffer[sysex_buffer_pos - 1] == 0xF7 && (sysex_buffer[1] != 0 || sysex_buffer[2] != 0)) {
+      // Determine message length (6 for control, 516 for bank, 6146 for all presets)
+      uint16_t msg_len = sysex_buffer_pos;
+      bool has_f7 = false;
+      for (int i = 0; i < sysex_buffer_pos; i++) {
+        if (sysex_buffer[i] == 0xF7) {
+          msg_len = i + 1;
+          has_f7 = true;
+          break;
+        }
+      }
+      if (!has_f7 && sysex_buffer_pos >= 516) {
+        msg_len = 516; // Assume bank upload
+        Serial.println("Warning: No F7 found, processing 516 bytes");
+      } else if (!has_f7 && sysex_buffer_pos < 516) {
+        Serial.print("Waiting for complete SysEx message, current length: ");
+        Serial.println(sysex_buffer_pos);
+        return;
+      }
+
+      // Log buffer content
+      Serial.print("Total buffer length: ");
+      Serial.println(sysex_buffer_pos);
+      Serial.print("Processing message length: ");
+      Serial.println(msg_len);
+      Serial.print("Buffer content, first 10 bytes: ");
+      for (int i = 0; i < min(10, msg_len); i++) {
+        Serial.print(sysex_buffer[i], HEX);
+        Serial.print(" ");
+      }
+      Serial.println();
+      Serial.print("Last 10 bytes: ");
+      for (int i = max(0, msg_len - 10); i < msg_len; i++) {
+        Serial.print(sysex_buffer[i], HEX);
+        Serial.print(" ");
+      }
+      Serial.println();
+
+      // Individual parameter update (6 bytes)
+      if (msg_len == 6 && sysex_buffer[1] != 0) {
         uint16_t address = sysex_buffer[1] + (sysex_buffer[2] << 7);
         uint16_t value = sysex_buffer[3] + (sysex_buffer[4] << 7);
-        Serial.print("Processing parameter update: address=");
+        Serial.print("Parameter update: address=");
         Serial.print(address);
         Serial.print(", value=");
         Serial.println(value);
@@ -461,73 +515,56 @@ void processMIDI(void) {
           current_sysex_parameters[address] = value;
           apply_audio_parameter(address, value);
           flag_save_needed = true;
-        } else {
-          Serial.println("Error: Invalid parameter address");
         }
-        sysex_buffer_pos = 0;
-        return;
       }
-
-      // Control command or bulk upload (starts with F0 00 00)
-      if (sysex_buffer[1] == 0 && sysex_buffer[2] == 0) {
+      // Control command or bulk upload
+      else if (sysex_buffer[1] == 0 && sysex_buffer[2] == 0) {
         uint8_t command = sysex_buffer[3];
         uint8_t parameter = sysex_buffer[4];
 
-        // Control command (6 bytes: F0 00 00 cmd param F7)
-        if (sysex_buffer_pos == 6 && sysex_buffer[5] == 0xF7) {
-          Serial.print("Processing control command: ");
+        // Control command (6 bytes)
+        if (msg_len == 6) {
+          Serial.print("Control command: ");
           Serial.print(command);
           Serial.print(", parameter: ");
           Serial.println(parameter);
           control_command(command, parameter);
-          sysex_buffer_pos = 0;
-          return;
         }
-
-        // Bulk preset upload - complete (516 bytes: F0 00 00 02 bank 512_bytes F7)
-        if (command == 2 && sysex_buffer_pos == 516 && sysex_buffer[sysex_buffer_pos - 1] == 0xF7) {
-          Serial.print("Processing complete bulk preset upload for bank: ");
+        // Bulk preset upload (516 bytes: F0 00 00 02 bank 512_bytes [F7])
+        else if (command == 2 && msg_len >= 516) {
+          Serial.print("Bulk preset upload for bank: ");
           Serial.println(parameter);
           for (int i = 0; i < parameter_size; i++) {
             int offset = 5 + 2 * i;
-            if (offset + 1 < sysex_buffer_pos) {
-              current_sysex_parameters[i] = sysex_buffer[offset] + (sysex_buffer[offset + 1] << 7);
-            }
+            current_sysex_parameters[i] = sysex_buffer[offset] + (sysex_buffer[offset + 1] << 7);
           }
-          control_command(command, parameter); // Saves preset
-          sysex_buffer_pos = 0;
-          return;
-        }
-
-        // Partial bulk upload fallback (290 bytes or more, as in original firmware)
-        if (command == 2 && sysex_buffer_pos >= 290) {
-          Serial.print("Processing partial bulk preset upload for bank: ");
+          Serial.print("First 5 parameters: ");
+          for (int i = 0; i < 5; i++) {
+            Serial.print(current_sysex_parameters[i]);
+            Serial.print(" ");
+          }
+          Serial.println();
+          Serial.print("Saving to bank: ");
           Serial.println(parameter);
-          int params_to_process = min((sysex_buffer_pos - 5) / 2, parameter_size);
-          for (int i = 0; i < params_to_process; i++) {
-            int offset = 5 + 2 * i;
-            if (offset + 1 < sysex_buffer_pos) {
-              current_sysex_parameters[i] = sysex_buffer[offset] + (sysex_buffer[offset + 1] << 7);
-            }
-          }
-          control_command(command, parameter); // Saves partial preset
-          sysex_buffer_pos = 0;
-          return;
+          control_command(command, parameter);
         }
-
-        // Fetch all presets response (6146 bytes: F0 00 00 04 00 6144_bytes F7)
-        if (command == 4 && sysex_buffer_pos == 6146 && sysex_buffer[sysex_buffer_pos - 1] == 0xF7) {
-          Serial.println("Processing fetchAllPresets response");
-          uploadAllPresets(&sysex_buffer[5], sysex_buffer_pos - 6);
-          sysex_buffer_pos = 0;
-          return;
+        // Fetch all presets (6146 bytes: F0 00 00 04 00 6144_bytes F7)
+        else if (command == 4 && msg_len >= 6146) {
+          Serial.println("Fetch all presets response");
+          uploadAllPresets(&sysex_buffer[5], msg_len - 6);
         }
+      } else {
+        Serial.print("Error: Unrecognized SysEx message, length: ");
+        Serial.println(msg_len);
       }
 
-      // If message is incomplete, wait for more data
-      Serial.print("Waiting for complete SysEx message, current length: ");
-      Serial.println(sysex_buffer_pos);
-      return;
+      // Shift remaining data in buffer
+      if (sysex_buffer_pos > msg_len) {
+        memmove(sysex_buffer, sysex_buffer + msg_len, sysex_buffer_pos - msg_len);
+        sysex_buffer_pos -= msg_len;
+      } else {
+        sysex_buffer_pos = 0;
+      }
     }
 
     Serial.print("Waiting for complete SysEx message, current length: ");
@@ -535,36 +572,10 @@ void processMIDI(void) {
     return;
   }
 
-  // Reset buffer if non-SysEx message received during SysEx accumulation
-  if (sysex_buffer_pos > 0) {
-    Serial.println("Non-SysEx message received, resetting buffer");
+  // Reset buffer on non-SysEx message or timeout
+  if (sysex_buffer_pos > 0 && (millis() - last_sysex_time > 1000)) {
+    Serial.println("SysEx timeout, resetting buffer");
     sysex_buffer_pos = 0;
-  }
-
-  // Handle MIDI Start, Stop, Clock (unchanged)
-  if (type == usbMIDI.Start && rythm_mode) {
-    rythm_current_step = 0;
-    midi_clock_current_step = 0;
-    rythm_tick_function();
-    Serial.println("Start received");
-    rythm_timer.end();
-  }
-  if (type == usbMIDI.Stop && rythm_mode) {
-    rythm_timer.begin(rythm_tick_function, short_timer_period);
-  }
-  if (type == usbMIDI.Clock && rythm_mode) {
-    rythm_bpm = (rythm_bpm * 10 + (1000 * 1000 * 60 / last_midi_clock_in) / 24) / 11.0;
-    last_midi_clock_in = 0;
-    midi_clock_current_step += 1;
-    recalculate_timer();
-    if (midi_clock_current_step == 24) {
-      rythm_timer.begin(rythm_tick_function, short_timer_period);
-      rythm_tick_function();
-      midi_clock_current_step = 0;
-    }
-    if (midi_clock_current_step > 18) {
-      rythm_timer.end();
-    }
   }
 }
 
@@ -879,8 +890,13 @@ void fetchAllPresets() {
   digitalWrite(_MUTE_PIN, LOW); // Mute DAC to prevent audio glitches
   AudioNoInterrupts(); // Disable audio interrupts during file operations
 
-  // Allocate buffer for all presets (12 banks * 256 parameters * 2 bytes each)
-  int8_t all_presets[12 * parameter_size * 2];
+  // Allocate buffer for all presets (12 banks * 256 parameters * 2 bytes + 5 header + 1 footer)
+  uint8_t sysex[6146];
+  sysex[0] = 0xF0;
+  sysex[1] = 0x00;
+  sysex[2] = 0x00;
+  sysex[3] = 0x04; // All presets command
+  sysex[4] = 0x00;
 
   for (int bank = 0; bank < preset_number; bank++) {
     // Load preset into current_sysex_parameters
@@ -906,14 +922,28 @@ void fetchAllPresets() {
 
     // Convert parameters to SysEx format (LSB, MSB)
     for (int i = 0; i < parameter_size; i++) {
-      all_presets[bank * parameter_size * 2 + 2 * i] = current_sysex_parameters[i] % 128;
-      all_presets[bank * parameter_size * 2 + 2 * i + 1] = current_sysex_parameters[i] / 128;
+      uint16_t value = current_sysex_parameters[i];
+      sysex[5 + bank * parameter_size * 2 + 2 * i] = value & 0x7F; // LSB
+      sysex[5 + bank * parameter_size * 2 + 2 * i + 1] = (value >> 7) & 0x7F; // MSB
     }
   }
 
+  sysex[6145] = 0xF7;
+
+  // Clear input buffer to avoid overflow
+  while (usbMIDI.read()) {}
+
   // Send SysEx message
-  usbMIDI.sendSysEx(12 * parameter_size * 2, (const uint8_t *)all_presets, 0);
-  Serial.println("Sent all presets via SysEx");
+  usbMIDI.sendSysEx(6146, sysex, true);
+  Serial.print("Sent all presets SysEx, length: 6146, first 10 bytes: ");
+  for (int i = 0; i < 10; i++) {
+    Serial.print(sysex[i], HEX);
+    Serial.print(" ");
+  }
+  Serial.println();
+
+  // Add delay to prevent USB MIDI buffer overrun
+  delay(100);
 
   // Restore current preset
   load_config(current_bank_number);
