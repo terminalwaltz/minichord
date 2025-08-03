@@ -364,20 +364,29 @@ void set_led_color(float h, float s, float v) {
 //-->>UTILITIES FOR SYSEX HANDLING
 void control_command(uint8_t command, uint8_t parameter) {
   switch (command) {
-  case 0: // SIGNAL TO SEND BACK ALL DATA (LEGACY FORMAT)
-    Serial.println("Reporting all data (legacy format 513-bytes)");
-    {
-      uint8_t sysex[513]; // 256 parameters * 2 bytes + F0, F7
+    case 0: // SIGNAL TO SEND BACK ALL DATA (LEGACY FORMAT)
+      Serial.println("Reporting all data (legacy format 514-bytes)");
+      uint8_t sysex[514];
       sysex[0] = 0xF0; // SysEx start
-      for (int i = 0; i < parameter_size; i++) {
+      for (int i = 0; i < parameter_size; i++) { // parameter_size = 256
         sysex[1 + 2 * i] = current_sysex_parameters[i] & 0x7F; // LSB
         sysex[1 + 2 * i + 1] = (current_sysex_parameters[i] >> 7) & 0x7F; // MSB
       }
-      sysex[512] = 0xF7; // SysEx end
-      while (usbMIDI.read()) {} // Clear input buffer
-      usbMIDI.sendSysEx(513, sysex, true);
-    }
-    break;
+      sysex[513] = 0xF7; // SysEx end
+      Serial.print("Sending 514-byte SysEx: ");
+      for (int i = 0; i < 10; i++) {
+        Serial.print(sysex[i], HEX);
+        Serial.print(" ");
+      }
+      Serial.println("...");
+      Serial.print("bankNumber: ");
+      Serial.println(current_sysex_parameters[1]);
+      Serial.print("firmwareVersion: ");
+      Serial.println(current_sysex_parameters[7]);
+      while (usbMIDI.read()) {}
+      usbMIDI.sendSysEx(514, sysex, true);
+      Serial.println("SysEx sent, length: 514");
+      break;
 
   case 1: // SIGNAL TO WIPE MEMORY
     Serial.println("Wiping memory");
