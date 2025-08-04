@@ -12,7 +12,7 @@
 #include <potentiometer.h>
 
 //>>SOFWTARE VERSION 
-int version_ID=0006; //to be read 00.03, stored at adress 7 in memory
+int version_ID=0007; //to be read 00.03, stored at adress 7 in memory
 //>>BUTTON ARRAYS<<
 debouncer harp_array[12];
 debouncer chord_matrix_array[22];
@@ -619,69 +619,78 @@ uint8_t calculate_note_chord(uint8_t voice, bool slashed, bool sharp) {
 // function to calculate the level of individual harp touch
 // Updated for scale mode
 uint8_t calculate_note_harp(uint8_t string, bool slashed, bool sharp) {
-  if (scalar_harp_selection >= 1 && scalar_harp_selection <= 6) { // Existing scale modes (1–6)
-    uint8_t scale_index = scalar_harp_selection - 1; // Adjust for 0-based array indexing
-    uint8_t scale_length = scale_lengths[scale_index]; // Number of notes in the selected scale
+  if (!harp_chord) {
+    harp_chord = &major; // Fallback to major if null
+    Serial.println("harp_chord was null, defaulting to major");
+  }
+  // Ensure valid fundamental
+  uint8_t effective_fundamental = (current_line >= 0) ? current_line : fundamental;
+  if (effective_fundamental > 6) {
+    effective_fundamental = 0; // Default to C if invalid
+    Serial.printf("Invalid fundamental=%d, defaulting to 0\n", fundamental);
+  }
+  if (scalar_harp_selection >= 1 && scalar_harp_selection <= 6) { // Scale modes (1–6)
+    uint8_t scale_index = scalar_harp_selection - 1;
+    uint8_t scale_length = scale_lengths[scale_index];
     uint8_t octave = (string / scale_length) > 0 ? (string / scale_length) : 0;
-    uint8_t scale_degree = string % scale_length; // Map string to a scale degree
-    uint8_t root_note = key_offsets[key_signature_selection]; // Root note offset for the selected key
-    // Adjust root_note for relative minor scales (scalar_harp_selection 5, 6)
+    uint8_t scale_degree = string % scale_length;
+    uint8_t root_note = key_offsets[key_signature_selection];
     if (scalar_harp_selection >= 5) {
-      root_note = (root_note - 3) % 12; // Shift down 3 semitones for relative minor
-      if (root_note > 127) root_note += 12; // Handle underflow in uint8_t
+      root_note = (root_note - 3) % 12;
+      if (root_note > 127) root_note += 12;
     }
     uint8_t note = root_note + scale_intervals[scale_index][scale_degree] + (octave * 12);
-    return note + 12; // Keep +12 to avoid edge case problems in key of C
+    Serial.printf("Scale mode %d, string %d, note=%d\n", scalar_harp_selection, string, note + 12);
+    return note + 12;
   } else if (scalar_harp_selection == 8 || scalar_harp_selection == 9) {  
-    // uses harp_chord, latched to current_chord to avoid unintended reset of harp when current_line = -1
-  uint8_t scale_index;
-  bool use_pentatonic = (scalar_harp_selection == 9);
-  if (harp_chord == &major) {
-    scale_index = use_pentatonic ? 0 : 10;
-  } else if (harp_chord == &maj_seventh) {
-    scale_index = use_pentatonic ? 1 : 12;
-  } else if (harp_chord == &minor) {
-    scale_index = use_pentatonic ? 2 : 14;
-  } else if (harp_chord == &seventh) {
-    scale_index = use_pentatonic ? 3 : 13;
-  } else if (harp_chord == &min_seventh) {
-    scale_index = use_pentatonic ? 4 : 11;
-  } else if (harp_chord == &dim) {
-    scale_index = 5;
-  } else if (harp_chord == &aug) {
-    scale_index = 6;
-  } else if (harp_chord == &maj_sixth) {
-    scale_index = 7;
-  } else if (harp_chord == &min_sixth) {
-    scale_index = 8;
-  } else if (harp_chord == &full_dim) {
-    scale_index = 9;
-  } else {
-    scale_index = use_pentatonic ? 0 : 10; // Fallback to major/pentatonic
-  }
-
+    // Chord-based scale modes
+    uint8_t scale_index;
+    bool use_pentatonic = (scalar_harp_selection == 9);
+    if (harp_chord == &major) {
+      scale_index = use_pentatonic ? 0 : 10;
+    } else if (harp_chord == &maj_seventh) {
+      scale_index = use_pentatonic ? 1 : 12;
+    } else if (harp_chord == &minor) {
+      scale_index = use_pentatonic ? 2 : 14;
+    } else if (harp_chord == &seventh) {
+      scale_index = use_pentatonic ? 3 : 13;
+    } else if (harp_chord == &min_seventh) {
+      scale_index = use_pentatonic ? 4 : 11;
+    } else if (harp_chord == &dim) {
+      scale_index = 5;
+    } else if (harp_chord == &aug) {
+      scale_index = 6;
+    } else if (harp_chord == &maj_sixth) {
+      scale_index = 7;
+    } else if (harp_chord == &min_sixth) {
+      scale_index = 8;
+    } else if (harp_chord == &full_dim) {
+      scale_index = 9;
+    } else {
+      scale_index = use_pentatonic ? 0 : 10; // Fallback to major/pentatonic
+      Serial.println("Unknown harp_chord, defaulting to major scale");
+    }
     uint8_t scale_length = chord_scale_lengths[scale_index];
     uint8_t octave = (string / scale_length) > 0 ? (string / scale_length) : 0;
     uint8_t scale_degree = string % scale_length;
     uint8_t root_note;
-
     if (slashed && note_slash_level == 0) {
-      // Use slash chord root note
       root_note = get_root_button(key_signature_selection, chord_frame_shift, slash_value);
       root_note += sharp * (flat_button_modifier ? -1 : 1);
     } else {
-      // Use fundamental chord root note
-      root_note = get_root_button(key_signature_selection, chord_frame_shift, fundamental);
+      root_note = get_root_button(key_signature_selection, chord_frame_shift, effective_fundamental);
       root_note += sharp * (flat_button_modifier ? -1 : 1);
     }
-
     uint8_t note = root_note + chord_scale_intervals[scale_index][scale_degree] + (octave * 12);
+    Serial.printf("Chord scale mode %d, string %d, harp_chord=%p, scale_index=%d, note=%d\n",
+                  scalar_harp_selection, string, harp_chord, scale_index, note);
     return note;
   } else if (chromatic_harp_mode) {
-    // Chromatic mode: unchanged behavior
-    return string + 24; // Chromatic notes starting from C2
+    uint8_t note = string + 24; // Chromatic notes starting from C2
+    Serial.printf("Chromatic mode, string %d, note=%d\n", string, note);
+    return note;
   } else {
-    // Default chord-based mode (scalar_harp_selection == 0): use harp_shuffling_array
+    // Chord-based mode (scalar_harp_selection == 0)
     uint8_t note = 0;
     uint8_t level = harp_shuffling_array[harp_shuffling_selection][string];
     if (slashed && level % 10 == note_slash_level) {
@@ -692,11 +701,13 @@ uint8_t calculate_note_harp(uint8_t string, bool slashed, bool sharp) {
       }
     } else {
       if (!flat_button_modifier) {
-        note = (12 * int(level / 10) + get_root_button(key_signature_selection, chord_frame_shift, fundamental) + sharp * 1.0 + (*current_chord)[level % 10]);
+        note = (12 * int(level / 10) + get_root_button(key_signature_selection, chord_frame_shift, effective_fundamental) + sharp * 1.0 + (*harp_chord)[level % 10]);
       } else {
-        note = (12 * int(level / 10) + get_root_button(key_signature_selection, chord_frame_shift, fundamental) - sharp * 1.0 + (*current_chord)[level % 10]);
+        note = (12 * int(level / 10) + get_root_button(key_signature_selection, chord_frame_shift, effective_fundamental) - sharp * 1.0 + (*harp_chord)[level % 10]);
       }
     }
+    Serial.printf("Chord mode 0, string %d, harp_chord=%p, fundamental=%d, note=%d\n",
+                  string, harp_chord, effective_fundamental, note);
     return note;
   }
 }
@@ -1058,45 +1069,50 @@ void loop() {
   flag_save_needed=mod_pot.update_parameter(alternate)||flag_save_needed;
 
   //>>Handling of chords logic
-  // If not button is active in touch mode, then turn everything off
-  //if more than three buttons in a line are on, we don't take it on
-  if (!continuous_chord && !rythm_mode) {
-    bool one_button_active = false;
-    int line_accumulator[3]={0,0,0};
-    for (int i = 1; i < 22; i++) {
-      bool active=chord_matrix_array[i].read_value();
-      one_button_active = one_button_active || active;
-      if(active){
-        line_accumulator[i%3]+=1;
-      }
-    }
-    if(line_accumulator[0]>2 ||line_accumulator[1]>2 || line_accumulator[2]>2){
-      current_line=-1;
-      inhibit_button=true;
-    }
-    if (!(one_button_active)) { 
-      inhibit_button=false; //we can resume working
-      AudioNoInterrupts();
-      for (int i = 0; i < 4; i++) {
-        if(  chord_envelope_array[i]->isSustain()){
-          chord_vibrato_envelope_array[i]->noteOff();
-          chord_vibrato_dc_envelope_array[i]->noteOff();
-          chord_envelope_array[i]->noteOff();
-          chord_envelope_filter_array[i]->noteOff();
-          if(chord_started_notes[i]!=0){
-            usbMIDI.sendNoteOff(chord_started_notes[i],chord_release_velocity,1,chord_port);
-            chord_started_notes[i]=0;
-          }
-
-        }
-      }
-      AudioInterrupts();
+//>>Handling of chords logic
+if (!continuous_chord && !rythm_mode) {
+  bool one_button_active = false;
+  int line_accumulator[3] = {0, 0, 0};
+  for (int i = 1; i < 22; i++) {
+    bool active = chord_matrix_array[i].read_value();
+    one_button_active = one_button_active || active;
+    if (active) {
+      line_accumulator[i % 3] += 1;
     }
   }
-  // If there is a line currently active, then start the update logic
-  if (current_line >= 0 || rythm_mode) { // Include rythm_mode to ensure harp updates
+  if (line_accumulator[0] > 2 || line_accumulator[1] > 2 || line_accumulator[2] > 2) {
+    current_line = -1;
+    inhibit_button = true;
+    Serial.println("Multiple buttons in row, inhibiting");
+  }
+  if (!one_button_active) {
+    inhibit_button = false; // Resume working
+    AudioNoInterrupts();
+    for (int i = 0; i < 4; i++) {
+      if (chord_envelope_array[i]->isSustain()) {
+        chord_vibrato_envelope_array[i]->noteOff();
+        chord_vibrato_dc_envelope_array[i]->noteOff();
+        chord_envelope_array[i]->noteOff();
+        chord_envelope_filter_array[i]->noteOff();
+        if (chord_started_notes[i] != 0) {
+          usbMIDI.sendNoteOff(chord_started_notes[i], chord_release_velocity, 1, chord_port);
+          chord_started_notes[i] = 0;
+        }
+      }
+    }
+    AudioInterrupts();
+    if (current_line != -1) {
+      current_line = -1; // Clear current_line
+      Serial.printf("No buttons active, retaining harp_chord=%p\n", harp_chord);
+    }
+  }
+}
+
+// If there is a line currently active, or in rhythm mode, update chord and harp
+if (current_line >= 0 || rythm_mode) {
+  bool update_harp_notes = false; // Flag to track if harp notes need updating
   if (current_line >= 0) {
-    fundamental = current_line; // Update fundamental only if a button is pressed
+    fundamental = current_line; // Update fundamental
     slash_chord = false;
     // Check for slashed chord
     for (int i = 1; i < 22; i++) {
@@ -1106,6 +1122,7 @@ void loop() {
         if (slash_line != current_line) {
           slash_chord = true;
           slash_value = slash_line;
+          Serial.printf("Slash chord detected: current_line=%d, slash_line=%d\n", current_line, slash_line);
         }
       }
     }
@@ -1113,40 +1130,40 @@ void loop() {
     bool button_maj = chord_matrix_array[1 + current_line * 3].read_value();
     bool button_min = chord_matrix_array[2 + current_line * 3].read_value();
     bool button_seventh = chord_matrix_array[3 + current_line * 3].read_value();
-    if (!(button_maj || button_seventh || button_min)) {
-      current_line = -1; // If no button is active, clear current_line
+    bool chord_changed = false; // Track if chord changes
+    if (!(button_maj || button_min || button_seventh)) {
+      current_line = -1; // Clear current_line if no buttons active
+      Serial.printf("No buttons active for line %d, retaining harp_chord=%p\n", fundamental, harp_chord);
     } else {
       // Assign current_chord based on buttons
+      uint8_t (*previous_chord)[7] = current_chord; // Store previous chord for comparison
       if (button_maj && !button_min && !button_seventh) {
-        if (barry_harris_mode) { current_chord = &maj_sixth; }
-        else { current_chord = &major; }
-      }
-      if (!button_maj && button_min && !button_seventh) {
-        if (barry_harris_mode) { current_chord = &min_sixth; }
-        else { current_chord = &minor; }
-      }
-      if (!button_maj && !button_min && button_seventh) {
+        current_chord = barry_harris_mode ? &maj_sixth : &major;
+      } else if (!button_maj && button_min && !button_seventh) {
+        current_chord = barry_harris_mode ? &min_sixth : &minor;
+      } else if (!button_maj && !button_min && button_seventh) {
         current_chord = &seventh;
-      }
-      if (button_maj && !button_min && button_seventh) {
+      } else if (button_maj && !button_min && button_seventh) {
         current_chord = &maj_seventh;
-      }
-      if (!button_maj && button_min && button_seventh) {
+      } else if (!button_maj && button_min && button_seventh) {
         current_chord = &min_seventh;
-      }
-      if (button_maj && button_min && !button_seventh) {
-        if (barry_harris_mode) { current_chord = &full_dim; }
-        else { current_chord = &dim; }
-      }
-      if (button_maj && button_min && button_seventh) {
+      } else if (button_maj && button_min && !button_seventh) {
+        current_chord = barry_harris_mode ? &full_dim : &dim;
+      } else if (button_maj && button_min && button_seventh) {
         current_chord = &aug;
+      }
+      // Check if chord has changed
+      chord_changed = (previous_chord != current_chord);
+      // Update harp_chord for all chord changes or button presses
+      if (chord_changed || button_pushed) {
+        harp_chord = current_chord;
+        update_harp_notes = true; // Flag harp note update
+        Serial.printf("Updated harp_chord to %p (major=%p, minor=%p, min_seventh=%p, dim=%p, full_dim=%p, aug=%p)\n",
+                      harp_chord, &major, &minor, &min_seventh, &dim, &full_dim, &aug);
       }
       // Calculate chord notes
       for (int i = 0; i < 7; i++) {
         current_chord_notes[i] = calculate_note_chord(i, slash_chord, sharp_active);
-      }
-      if (button_pushed && current_line >= 0 && (scalar_harp_selection == 8 || scalar_harp_selection == 9)) {
-          harp_chord = current_chord;
       }
       // Apply chord notes if button pushed or in rhythm mode
       if (button_pushed || rythm_mode) {
@@ -1163,23 +1180,24 @@ void loop() {
       }
     }
   }
-  // Update harp notes for all modes, including rhythm mode
-  for (int i = 0; i < 12; i++) {
-    current_harp_notes[i] = calculate_note_harp(i, slash_chord, sharp_active);
-    if (change_held_strings || rythm_mode) { // Update held strings in rhythm mode too
-      if (harp_started_notes[i] != 0) {
-        usbMIDI.sendNoteOff(harp_started_notes[i], harp_release_velocity, 1, harp_port);
-        harp_started_notes[i] = 0;
+  // Update harp notes for all modes if needed
+  if (update_harp_notes || rythm_mode || change_held_strings) {
+    for (int i = 0; i < 12; i++) {
+      current_harp_notes[i] = calculate_note_harp(i, slash_chord, sharp_active);
+      if (harp_started_notes[i] != 0 || string_enveloppe_array[i]->isSustain()) {
+        if (harp_started_notes[i] != 0) {
+          usbMIDI.sendNoteOff(harp_started_notes[i], harp_release_velocity, 1, harp_port);
+          harp_started_notes[i] = 0;
+        }
         usbMIDI.sendNoteOn(midi_base_note_transposed + current_harp_notes[i], harp_attack_velocity, 1, harp_port);
         harp_started_notes[i] = midi_base_note_transposed + current_harp_notes[i];
-      }
-      if (string_enveloppe_array[i]->isSustain()) {
         set_harp_voice_frequency(i, current_harp_notes[i]);
+        Serial.printf("Harp note %d updated: %d\n", i, current_harp_notes[i]);
       }
     }
   }
   if ((trigger_chord || (button_pushed && retrigger_chord)) && !rythm_mode) {
-    Serial.println("trigger");
+    Serial.println("Triggering chord");
     note_timer[0].priority(253);
     note_timer[1].priority(253);
     note_timer[2].priority(253);
@@ -1190,7 +1208,6 @@ void loop() {
     note_timer[3].begin([] { play_single_note(3, &note_timer[3]); }, 10 + chord_retrigger_release * 1000 + inter_string_delay * 3 + random(random_delay));
     trigger_chord = false;
   }
-  button_pushed = false;
 }
 
   // Now let's read the button transitions
