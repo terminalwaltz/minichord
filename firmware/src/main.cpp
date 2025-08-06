@@ -210,7 +210,7 @@ AudioEffectMultiply *chord_tremolo_mult_array[4] = {&voice1_tremolo_mult, &voice
 AudioEffectEnvelope *chord_envelope_array[4] = {&voice1_envelope, &voice2_envelope, &voice3_envelope, &voice4_envelope};
 
 // Timing window for multi-button chord detection
-#define CHORD_WINDOW_MS 100 // 60ms window for detecting simultaneous presses
+#define CHORD_WINDOW_MS 35 // 60ms window for detecting simultaneous presses
 elapsedMillis chord_window_timer; // Timer for the chord detection window
 bool chord_window_active = false; // Flag to indicate if window is active
 bool chord_buttons_pressed[22] = {false}; // Buffer to store button states during window
@@ -976,7 +976,7 @@ void handleChordButtons() {
     bool sharp_active = chord_matrix_array[0].read_value();
     int sharp_transition = chord_matrix_array[0].read_transition();
     if (sharp_transition == 2 && current_line >= 0) {
-        chord_sharpened = true; // Sharp the current chord on press
+        chord_sharpened = true;
         button_pushed = true;
         Serial.println("Sharp button pressed, sharpening current chord");
     }
@@ -984,27 +984,28 @@ void handleChordButtons() {
     if (!continuous_chord && !rythm_mode) {
         bool new_press = false;
         bool main_chord_press = false;
+        int active_button_count = 0;
+        int first_active_button = -1;
+        int first_active_line = -1;
+
+        // Check for new button presses and count active buttons
         for (int i = 1; i < 22; i++) {
             int value = chord_matrix_array[i].read_transition();
             if (value > 1) {
                 new_press = true;
                 int line = (i - 1) / 3;
-                if (current_line == -1 || line == current_line) {
-                    chord_buttons_pressed[i] = true;
+                chord_buttons_pressed[i] = true;
+                active_button_count++;
+                if (first_active_button == -1) {
+                    first_active_button = i;
+                    first_active_line = line;
+                }
+                if (line == current_line || current_line == -1) {
                     main_chord_press = true;
-                    Serial.print("Main chord button pressed: "); Serial.println(i);
                 } else {
-                    // Latch slash chord on new press
                     slash_chord = true;
                     slash_value = line;
                     Serial.print("Slash button pressed, latching slash_value: "); Serial.println(slash_value);
-                }
-                if (!chord_window_active && current_line == -1) {
-                    chord_window_timer = 0;
-                    chord_window_active = true;
-                    chord_window_processed = false;
-                    button_pushed = true;
-                    Serial.println("Chord window started");
                 }
             }
         }
@@ -1026,13 +1027,13 @@ void handleChordButtons() {
             memset(chord_buttons_pressed, 0, sizeof(chord_buttons_pressed));
             slash_chord = false;
             slash_value = 0;
-            chord_sharpened = false; // Reset when inhibited
+            chord_sharpened = false;
             Serial.println("Inhibit: too many buttons in a column");
         } else {
             inhibit_button = false;
         }
 
-        // Reset state only if main chord buttons are released
+        // Reset state if main chord buttons are released
         bool main_chord_active = false;
         if (current_line >= 0) {
             for (int i = 1 + current_line * 3; i <= 3 + current_line * 3; i++) {
@@ -1061,10 +1062,63 @@ void handleChordButtons() {
             memset(chord_buttons_pressed, 0, sizeof(chord_buttons_pressed));
             slash_chord = false;
             slash_value = 0;
-            chord_sharpened = false; // Reset when chord is released
+            chord_sharpened = false;
         }
 
-        // Process chord window
+        // Immediate trigger for single-button press
+        if (new_press && !inhibit_button && active_button_count == 1 && current_line == -1 && !chord_window_active) {
+            current_line = first_active_line;
+            fundamental = current_line;
+            chord_sharpened = sharp_active;
+            trigger_chord = true;
+            slash_chord = false;
+            slash_value = 0;
+
+            // Set default chord (e.g., major) for single button
+            current_chord = barry_harris_mode ? &maj_sixth : &major;
+            Serial.print("Single button press, triggering chord immediately: line="); Serial.println(current_line);
+
+            for (int i = 0; i < 7; i++) {
+                current_chord_notes[i] = calculate_note_chord(i, slash_chord, chord_sharpened);
+                current_applied_chord_notes[i] = current_chord_notes[i];
+            }
+            for (int i = 0; i < 12; i++) {
+                current_harp_notes[i] = calculate_note_harp(i, slash_chord, chord_sharpened);
+                if (change_held_strings && string_enveloppe_array[i]->isSustain()) {
+                    if (harp_started_notes[i] != 0) {
+                        usbMIDI.sendNoteOff(harp_started_notes[i], harp_release_velocity, 1, harp_port);
+                        harp_started_notes[i] = 0;
+                        usbMIDI.sendNoteOn(midi_base_note_transposed + current_harp_notes[i], harp_attack_velocity, 1, harp_port);
+                        harp_started_notes[i] = midi_base_note_transposed + current_harp_notes[i];
+                    }
+                    set_harp_voice_frequency(i, current_harp_notes[i]);
+                }
+            }
+
+            AudioNoInterrupts();
+            for (int i = 0; i < 4; i++) {
+                set_chord_voice_frequency(i, current_chord_notes[i]);
+                chord_vibrato_envelope_array[i]->noteOn();
+                chord_vibrato_dc_envelope_array[i]->noteOn();
+                chord_envelope_array[i]->noteOn();
+                chord_envelope_filter_array[i]->noteOn();
+                if (chord_started_notes[i] != 0) {
+                    usbMIDI.sendNoteOff(chord_started_notes[i], chord_release_velocity, 1, chord_port);
+                    chord_started_notes[i] = 0;
+                }
+                usbMIDI.sendNoteOn(midi_base_note_transposed + current_chord_notes[i], chord_attack_velocity, 1, chord_port);
+                chord_started_notes[i] = midi_base_note_transposed + current_chord_notes[i];
+            }
+            AudioInterrupts();
+            button_pushed = false;
+            chord_buttons_pressed[first_active_button] = true;
+            chord_window_active = true;
+            chord_window_timer = 0;
+            chord_window_processed = false;
+            Serial.println("Chord window started for potential multi-button presses");
+        }
+
+        // Process chord window for multi-button chords
         if (chord_window_active && chord_window_timer >= CHORD_WINDOW_MS && !chord_window_processed) {
             int active_line = -1;
             for (int i = 1; i < 22; i++) {
@@ -1078,7 +1132,7 @@ void handleChordButtons() {
                 if (current_line == -1) {
                     current_line = active_line;
                     fundamental = current_line;
-                    chord_sharpened = sharp_active; // Set sharpened state based on sharp button
+                    chord_sharpened = sharp_active;
                     Serial.print("Active line set: "); Serial.println(current_line);
                 }
 
@@ -1121,6 +1175,7 @@ void handleChordButtons() {
                             set_harp_voice_frequency(i, current_harp_notes[i]);
                         }
                     }
+                    // Only retrigger if the chord has changed
                     if (trigger_chord || (button_pushed && retrigger_chord)) {
                         Serial.println("Triggering chord from window");
                         stop_all_note_timers();
@@ -1146,7 +1201,7 @@ void handleChordButtons() {
                     current_line = -1;
                     slash_chord = false;
                     slash_value = 0;
-                    chord_sharpened = false; // Reset when no valid chord
+                    chord_sharpened = false;
                     Serial.println("No valid chord buttons in window");
                 }
                 trigger_chord = main_chord_press;
@@ -1154,7 +1209,7 @@ void handleChordButtons() {
                 current_line = -1;
                 slash_chord = false;
                 slash_value = 0;
-                chord_sharpened = false; // Reset when no active line
+                chord_sharpened = false;
                 Serial.println("No active line detected");
             }
 
@@ -1219,24 +1274,8 @@ void handleChordButtons() {
                 }
             }
         }
-
-        // Handle new chord presses
-        if (new_press && current_line == -1 && !inhibit_button && main_chord_press) {
-            for (int i = 1; i < 22; i++) {
-                if (chord_buttons_pressed[i]) {
-                    current_line = (i - 1) / 3;
-                    fundamental = current_line;
-                    chord_sharpened = sharp_active; // Set sharpened state for new chord
-                    trigger_chord = true;
-                    slash_chord = false; // Reset slash when new main chord is set
-                    slash_value = 0;
-                    Serial.print("New chord line set: "); Serial.println(current_line);
-                    break;
-                }
-            }
-        }
     } else {
-        // Continuous or rhythm mode
+        // Continuous or rhythm mode (unchanged)
         if (current_line >= 0) {
             fundamental = current_line;
             slash_chord = false;
@@ -1258,7 +1297,7 @@ void handleChordButtons() {
             bool button_seventh = chord_matrix_array[3 + current_line * 3].read_value();
             if (!(button_maj || button_min || button_seventh)) {
                 current_line = -1;
-                chord_sharpened = false; // Reset when no chord buttons active
+                chord_sharpened = false;
                 Serial.println("No chord buttons active, resetting line");
             } else {
                 if (button_maj && !button_min && !button_seventh) {
@@ -1328,7 +1367,7 @@ void handleChordButtons() {
                 Serial.print("Pushed button: "); Serial.println(i);
                 if (current_line == -1) {
                     current_line = (i - 1) / 3;
-                    chord_sharpened = sharp_active; // Set sharpened state for new chord
+                    chord_sharpened = sharp_active;
                     if (!continuous_chord) {
                         trigger_chord = true;
                     }
