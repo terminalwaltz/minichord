@@ -755,14 +755,19 @@ String serialize(int16_t data_array[], u_int16_t array_size) {
 void deserialize(String input, int16_t data_array[]) {
   int len = input.length() + 1;
   char string[len];
-  char *p;
   input.toCharArray(string, len);
-  p = strtok(string, ",");
+  char *p = strtok(string, ",;"); // Support both commas and semicolons
   int i = 0;
   while (p && i < parameter_size) {
     data_array[i] = atoi(p);
-    p = strtok(NULL, ",");
+    p = strtok(NULL, ",;");
     i++;
+  }
+  if (i < parameter_size) {
+    Serial.print("Warning: Parsed only ");
+    Serial.print(i);
+    Serial.print(" parameters, expected ");
+    Serial.println(parameter_size);
   }
 }
 
