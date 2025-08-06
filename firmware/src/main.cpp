@@ -209,11 +209,12 @@ AudioEffectMultiply *chord_tremolo_mult_array[4] = {&voice1_tremolo_mult, &voice
 AudioEffectEnvelope *chord_envelope_array[4] = {&voice1_envelope, &voice2_envelope, &voice3_envelope, &voice4_envelope};
 
 // Timing window for multi-button chord detection
-#define CHORD_WINDOW_MS 60 // 60ms window for detecting simultaneous presses
+#define CHORD_WINDOW_MS 100 // 60ms window for detecting simultaneous presses
 elapsedMillis chord_window_timer; // Timer for the chord detection window
 bool chord_window_active = false; // Flag to indicate if window is active
 bool chord_buttons_pressed[22] = {false}; // Buffer to store button states during window
 bool chord_window_processed = false; // Flag to prevent reprocessing
+
 
 //>>SYNTHESIS VARIABLE<<
 // waveshaper shape
@@ -488,17 +489,24 @@ void processMIDI(void) {
 //-->>TIMER FUNCTIONS
 // function to handle the delayed chord activation
 void play_single_note(int i, IntervalTimer *timer) {
-  timer->end();
-  set_chord_voice_frequency(i, current_applied_chord_notes[i]);
-  chord_vibrato_envelope_array[i]->noteOn();
-  chord_vibrato_dc_envelope_array[i]->noteOn();
-  chord_envelope_array[i]->noteOn();
-  chord_envelope_filter_array[i]->noteOn();
-  if(chord_started_notes[i]!=0){
-    usbMIDI.sendNoteOff(chord_started_notes[i],chord_release_velocity,1,chord_port);
-    chord_started_notes[i]=0;}
-  usbMIDI.sendNoteOn(midi_base_note_transposed+ current_applied_chord_notes[i],chord_attack_velocity,1,chord_port);
-  chord_started_notes[i]=midi_base_note_transposed+ current_applied_chord_notes[i];
+    timer->end();
+    if (chord_envelope_array[i]->isActive()) {
+        chord_vibrato_envelope_array[i]->noteOff();
+        chord_vibrato_dc_envelope_array[i]->noteOff();
+        chord_envelope_array[i]->noteOff();
+        chord_envelope_filter_array[i]->noteOff();
+    }
+    set_chord_voice_frequency(i, current_applied_chord_notes[i]);
+    chord_vibrato_envelope_array[i]->noteOn();
+    chord_vibrato_dc_envelope_array[i]->noteOn();
+    chord_envelope_array[i]->noteOn();
+    chord_envelope_filter_array[i]->noteOn();
+    if (chord_started_notes[i] != 0) {
+        usbMIDI.sendNoteOff(chord_started_notes[i], chord_release_velocity, 1, chord_port);
+        chord_started_notes[i] = 0;
+    }
+    usbMIDI.sendNoteOn(midi_base_note_transposed + current_applied_chord_notes[i], chord_attack_velocity, 1, chord_port);
+    chord_started_notes[i] = midi_base_note_transposed + current_applied_chord_notes[i];
 }
 
 void play_note_selected_duration(int i,int current_note){
@@ -707,6 +715,12 @@ uint8_t calculate_note_harp(uint8_t string, bool slashed, bool sharp) {
         Serial.printf("Chord mode 0, string %d, harp_chord=%p, fundamental=%d, note=%d\n",
                       string, harp_chord, effective_fundamental, note);
         return note;
+    }
+}
+
+void stop_all_note_timers() {
+    for (int i = 0; i < 4; i++) {
+        note_timer[i].end();
     }
 }
 //-->>RYTHM MODE UTILITIES
@@ -1089,6 +1103,7 @@ void handleChordButtons() {
                     }
                     if ((trigger_chord || (button_pushed && retrigger_chord)) && !rythm_mode) {
                         Serial.println("Triggering chord from window");
+                        stop_all_note_timers();
                         note_timer[0].priority(253);
                         note_timer[1].priority(253);
                         note_timer[2].priority(253);
@@ -1104,6 +1119,8 @@ void handleChordButtons() {
                     current_line = -1;
                     Serial.println("No valid chord buttons in window");
                 }
+                  trigger_chord = true; // Force trigger for any valid press
+
             } else {
                 current_line = -1;
                 Serial.println("No active line detected");
@@ -1372,10 +1389,36 @@ void loop() {
     if (hold_transition == 2) {
         if (!rythm_mode) {
             Serial.println("Switching mode");
+            bool prev_continuous_chord = continuous_chord;
             continuous_chord = !continuous_chord;
             analogWrite(RYTHM_LED_PIN, 255 * continuous_chord);
             if (current_line == -1) {
                 trigger_chord = true;
+            }
+            // Stop chord when turning off continuous mode
+            if (prev_continuous_chord && !continuous_chord) {
+                Serial.println("Stopping chord on continuous mode disable");
+                AudioNoInterrupts();
+                for (int i = 0; i < 4; i++) {
+                    if (chord_envelope_array[i]->isActive()) {
+                        chord_vibrato_envelope_array[i]->noteOff();
+                        chord_vibrato_dc_envelope_array[i]->noteOff();
+                        chord_envelope_array[i]->noteOff();
+                        chord_envelope_filter_array[i]->noteOff();
+                        if (chord_started_notes[i] != 0) {
+                            usbMIDI.sendNoteOff(chord_started_notes[i], chord_release_velocity, 1, chord_port);
+                            chord_started_notes[i] = 0;
+                        }
+                    }
+                }
+                stop_all_note_timers(); // Stop any pending note timers
+                AudioInterrupts();
+                current_line = -1;
+                chord_window_active = false;
+                chord_window_processed = false;
+                memset(chord_buttons_pressed, 0, sizeof(chord_buttons_pressed));
+                slash_chord = false;
+                slash_value = 0;
             }
         } else {
             if (since_last_button_push > 100 && since_last_button_push < 2000) {
