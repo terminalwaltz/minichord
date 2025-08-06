@@ -1286,10 +1286,36 @@ void loop() {
     if (hold_transition == 2) {
         if (!rythm_mode) {
             Serial.println("Switching mode");
+            bool prev_continuous_chord = continuous_chord;
             continuous_chord = !continuous_chord;
             analogWrite(RYTHM_LED_PIN, 255 * continuous_chord);
             if (current_line == -1) {
                 trigger_chord = true;
+            }
+            // Stop chord when turning off continuous mode
+            if (prev_continuous_chord && !continuous_chord) {
+                Serial.println("Stopping chord on continuous mode disable");
+                AudioNoInterrupts();
+                for (int i = 0; i < 4; i++) {
+                    if (chord_envelope_array[i]->isActive()) {
+                        chord_vibrato_envelope_array[i]->noteOff();
+                        chord_vibrato_dc_envelope_array[i]->noteOff();
+                        chord_envelope_array[i]->noteOff();
+                        chord_envelope_filter_array[i]->noteOff();
+                        if (chord_started_notes[i] != 0) {
+                            usbMIDI.sendNoteOff(chord_started_notes[i], chord_release_velocity, 1, chord_port);
+                            chord_started_notes[i] = 0;
+                        }
+                    }
+                }
+                stop_all_note_timers(); // Stop any pending note timers
+                AudioInterrupts();
+                current_line = -1;
+                chord_window_active = false;
+                chord_window_processed = false;
+                memset(chord_buttons_pressed, 0, sizeof(chord_buttons_pressed));
+                slash_chord = false;
+                slash_value = 0;
             }
         } else {
             if (since_last_button_push > 100 && since_last_button_push < 2000) {
