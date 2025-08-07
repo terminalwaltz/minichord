@@ -222,7 +222,7 @@ AudioEffectMultiply *chord_tremolo_mult_array[4] = {&voice1_tremolo_mult, &voice
 AudioEffectEnvelope *chord_envelope_array[4] = {&voice1_envelope, &voice2_envelope, &voice3_envelope, &voice4_envelope};
 
 // Timing window
-#define CHORD_WINDOW_MS 50  // Window for initial chord detection
+#define CHORD_WINDOW_MS 20  // Window for initial chord detection
 elapsedMillis chord_window_timer;
 bool chord_window_active = false;
 bool chord_window_processed = false;
