@@ -107,6 +107,13 @@ const uint8_t chord_scale_intervals[15][8] = {
 };
 const uint8_t chord_scale_lengths[15] = {5, 5, 5, 5, 5, 8, 6, 8, 8, 8, 7, 7, 7, 7, 7};
 
+// Key and column names for logging and key signature changes
+const char* key_names[] = {
+  "C", "C#", "Cb", "D", "D#", "Db", "E", "E#", "Eb", "F", "F#", "Fb",
+  "G", "G#", "Gb", "A", "A#", "Ab", "B", "B#", "Bb"
+};
+const char* column_names[] = {"B", "E", "A", "D", "G", "C", "F"};
+
 float c_frequency = 130.81;                      // for C3
 uint8_t chord_octave_change=4;
 uint8_t harp_octave_change=4;
@@ -1023,7 +1030,145 @@ void stopChord() {
     AudioInterrupts();
 }
 
+void handleKeySignatureChange() {
+  up_button.set(digitalRead(UP_PGM_PIN));
+  down_button.set(digitalRead(DOWN_PGM_PIN));
+  bool up_held = up_button.read_value();
+  bool down_held = down_button.read_value();
+  bool preset_combo = up_held && down_held; // Require both Up and Down
+
+  // Compute any_chord_pressed locally
+  bool any_chord_pressed = false;
+  for (int i = 1; i < 22; i++) { // Check all chord buttons
+    if (chord_matrix_array[i].read_value()) {
+      any_chord_pressed = true;
+      break;
+    }
+  }
+
+  if (!preset_combo || !any_chord_pressed) return;
+
+  // Map button indices (1–21) to KeySig and key_names index
+  const struct {
+    int8_t key_sig; // KeySig enum value
+    int8_t key_name_idx; // Index into key_names array
+  } button_key_map[22] = {
+    {-1, -1}, // Button 0 (unused, sharp button)
+    {KEY_SIG_C, 0},   // Button 1: B Top (B# → C)
+    {KEY_SIG_B, 18},  // Button 2: B Middle (B)
+    {KEY_SIG_Bb, 20}, // Button 3: B Bottom (Bb)
+    {KEY_SIG_F, 9},   // Button 4: E Top (E# → F)
+    {KEY_SIG_E, 6},   // Button 5: E Middle (E)
+    {KEY_SIG_Eb, 8},  // Button 6: E Bottom (Eb)
+    {KEY_SIG_Bb, 20}, // Button 7: A Top (A# → Bb)
+    {KEY_SIG_A, 15},  // Button 8: A Middle (A)
+    {KEY_SIG_Ab, 17}, // Button 9: A Bottom (Ab)
+    {KEY_SIG_Eb, 8},  // Button 10: D Top (D# → Eb)
+    {KEY_SIG_D, 3},   // Button 11: D Middle (D)
+    {KEY_SIG_Db, 5},  // Button 12: D Bottom (Db)
+    {KEY_SIG_Ab, 17}, // Button 13: G Top (G# → Ab)
+    {KEY_SIG_G, 12},  // Button 14: G Middle (G)
+    {KEY_SIG_Gb, 14}, // Button 15: G Bottom (Gb)
+    {KEY_SIG_Db, 5},  // Button 16: C Top (C# → Db)
+    {KEY_SIG_C, 0},   // Button 17: C Middle (C)
+    {KEY_SIG_B, 18},  // Button 18: C Bottom (Cb → B)
+    {KEY_SIG_Gb, 14}, // Button 19: F Top (F# → Gb)
+    {KEY_SIG_F, 9},   // Button 20: F Middle (F)
+    {KEY_SIG_E, 6}    // Button 21: F Bottom (Fb → E)
+  };
+
+  for (int i = 1; i < 22; i++) { // Check chord buttons (1–21)
+    bool button_pressed = (chord_matrix_array[i].read_transition() > 1);
+    if (!button_pressed) {
+      chord_matrix.update(chord_matrix_array);
+      button_pressed = (chord_matrix_array[i].read_transition() > 1 || chord_matrix_array[i].read_value());
+    }
+
+    if (button_pressed) {
+      elapsedMillis hold_timer = 0;
+      bool still_held = chord_matrix_array[i].read_value();
+      bool up_held_confirmed = up_held;
+      bool down_held_confirmed = down_held;
+
+      // Confirm hold for 50ms
+      while (hold_timer < 50 && still_held) {
+        up_button.set(digitalRead(UP_PGM_PIN));
+        down_button.set(digitalRead(DOWN_PGM_PIN));
+        chord_matrix.update(chord_matrix_array);
+        up_held_confirmed = up_held_confirmed && up_button.read_value();
+        down_held_confirmed = down_held_confirmed && down_button.read_value();
+        still_held = chord_matrix_array[i].read_value();
+      }
+
+      // Debug output
+      int row = (i - 1) % 3; // 0=Top, 1=Middle, 2=Bottom
+      int column = (i - 1) / 3; // Hardware column index
+      Serial.print("Button detected: "); Serial.print(i);
+      Serial.print(" (still held: "); Serial.print(still_held);
+      Serial.print(" up_held: "); Serial.print(up_held_confirmed);
+      Serial.print(" down_held: "); Serial.print(down_held_confirmed);
+      Serial.print(" row: "); Serial.print(row == 0 ? "Top" : row == 1 ? "Middle" : "Bottom");
+      Serial.print(" column: "); Serial.print(column_names[column]); Serial.println(")");
+
+      if (!still_held || !up_held_confirmed || !down_held_confirmed) continue;
+
+      // Get key signature from mapping
+      if (button_key_map[i].key_sig == -1) continue; // Invalid button
+
+      // Apply key signature
+      key_signature_selection = button_key_map[i].key_sig;
+      apply_audio_parameter(35, button_key_map[i].key_sig); // Use KeySig index
+      Serial.print("Applied key signature: "); Serial.print(key_names[button_key_map[i].key_name_idx]);
+      Serial.print(" (KeySig: "); Serial.print(button_key_map[i].key_sig); Serial.println(")");
+
+      // Calculate LED hue (based on key_name_idx, 0–20, mapped to 0–360 degrees)
+      float key_hue = (float)button_key_map[i].key_name_idx / 21.0 * 360.0;
+      set_led_color(key_hue, 1.0, 1.0);
+
+      // Blink LED
+      color_led_blink_timer.begin([] {
+        set_led_color(bank_led_hue, 1.0, 1.0 - led_attenuation);
+        color_led_blink_timer.end();
+      }, 200000);
+
+      // Stop active chords
+      AudioNoInterrupts();
+      for (int j = 0; j < 4; j++) {
+        if (chord_envelope_array[j]->isSustain()) {
+          chord_vibrato_envelope_array[j]->noteOff();
+          chord_vibrato_dc_envelope_array[j]->noteOff();
+          chord_envelope_array[j]->noteOff();
+          chord_envelope_filter_array[j]->noteOff();
+          if (chord_started_notes[j] != 0) {
+            usbMIDI.sendNoteOff(chord_started_notes[j], chord_release_velocity, 1, chord_port);
+            chord_started_notes[j] = 0;
+          }
+        }
+      }
+      AudioInterrupts();
+
+      // Reset state
+      current_line = -1;
+      trigger_chord = true;
+      button_pushed = false;
+      inhibit_button = false;
+      if (!sysex_controler_connected) {
+        flag_save_needed = true;
+      }
+
+      // Update harp notes to reflect new key signature
+      updateNotes(slash_chord, chord_sharpened);
+    }
+
+    if (chord_matrix_array[i].read_transition() == 1) {
+      inhibit_button = false;
+    }
+  }
+}
+
 void handleChordButtons() {
+      // Check for key signature change first
+  handleKeySignatureChange();
     // Node A: Start checking chord buttons
     // Node B: Read button states
     chord_matrix.update(chord_matrix_array);
@@ -1497,6 +1642,8 @@ void handleRhythmMode() {
         }
     }
 }
+
+
 
 
 
