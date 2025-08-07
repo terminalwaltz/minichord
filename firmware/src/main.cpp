@@ -1174,7 +1174,7 @@ void handleChordButtons() {
     chord_matrix.update(chord_matrix_array);
 
     // Node C: Log settings every half-second
-    static unsigned long last_log = 0;
+/*     static unsigned long last_log = 0;
     if (millis() - last_log > 500) {
         Serial.print("Preset: continuous="); Serial.print(continuous_chord);
         Serial.print(", rhythm="); Serial.print(rythm_mode);
@@ -1183,7 +1183,7 @@ void handleChordButtons() {
         Serial.print(", scalar_harp_selection="); Serial.print(scalar_harp_selection);
         Serial.print(", harp_chord="); Serial.println((harp_chord == &major) ? "major" : (harp_chord == &minor) ? "minor" : (harp_chord == &seventh) ? "seventh" : (harp_chord == &maj_seventh) ? "maj_seventh" : (harp_chord == &min_seventh) ? "min_seventh" : (harp_chord == &dim) ? "dim" : (harp_chord == &full_dim) ? "full_dim" : (harp_chord == &aug) ? "aug" : (harp_chord == &maj_sixth) ? "maj_sixth" : (harp_chord == &min_sixth) ? "min_sixth" : "unknown");
         last_log = millis();
-    }
+    } */
 
     // Node D: Sharp button just pressed while a chord is active?
     bool sharp_active = chord_matrix_array[0].read_value();
