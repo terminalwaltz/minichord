@@ -431,5 +431,5 @@ AudioConnection          patchCord2022(main_reverb, 1, stereo_l_mixer, 2);
 AudioConnection          patchCord2023(stereo_l_mixer, 0, DAC_out, 1);
 AudioConnection          patchCord2024(stereo_r_mixer, 0, DAC_out, 0);
 
-//AudioConnection          patchCord2025(stereo_l_mixer, 0, USB_out, 1);
-//AudioConnection          patchCord2026(stereo_r_mixer, 0, USB_out, 0);
+AudioConnection          patchCord2025(stereo_l_mixer, 0, USB_out, 1);
+AudioConnection          patchCord2026(stereo_r_mixer, 0, USB_out, 0);
