@@ -12,7 +12,7 @@
 #include <potentiometer.h>
 
 //>>SOFWTARE VERSION 
-int version_ID=0006; //to be read 00.03, stored at adress 7 in memory
+int version_ID=0007; //to be read 00.03, stored at adress 7 in memory
 //>>BUTTON ARRAYS<<
 debouncer harp_array[12];
 debouncer chord_matrix_array[22];
@@ -178,7 +178,7 @@ AudioEffectMultiply *chord_tremolo_mult_array[4] = {&voice1_tremolo_mult, &voice
 AudioEffectEnvelope *chord_envelope_array[4] = {&voice1_envelope, &voice2_envelope, &voice3_envelope, &voice4_envelope};
 
 // Timing window
-#define CHORD_WINDOW_MS 50  // Window for initial chord detection
+#define CHORD_WINDOW_MS 20  // Window for initial chord detection
 elapsedMillis chord_window_timer;
 bool chord_window_active = false;
 bool chord_window_processed = false;
@@ -860,7 +860,7 @@ void setup() {
 }
 
 
-// Helper functions (unchanged from previous version)
+// Helper functions for handleChordButtons()
 void updateNotes(bool withSlashChord, bool isSharpened) {
     for (int i = 0; i < 7; i++) {
         current_chord_notes[i] = calculate_note_chord(i, withSlashChord, isSharpened);
