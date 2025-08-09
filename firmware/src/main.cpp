@@ -81,9 +81,9 @@ const int8_t key_offsets[21] = {
   4, 11 // Fb, Cb
 };
 const int8_t key_signatures[21] = {
-  0, 1, 2, 3, 4, 5, -1, -2, -3, -4, -5, -6, // C (0), G (1#), D (2#), A (3#), E (4#), B (5#), F (-1), Bb (-2), Eb (-3), Ab (-4), Db (-5), Gb (-6)
-  7, 6, 11, 6, 4, 3, 0, // C# (7#), D# (6#), E# (11#), F# (6#), G# (4#), A# (3#), B# (0#)
-  -7, -7 // Fb (-7), Cb (-7)
+   0,  1,  2,  3,  4,  5, -1, -2, -3, -4, -5, -6, // C, G, D, A, E, B, F, Bb, Eb, Ab, Db, Gb
+   7,  9, 11,  6,  8, 10, 12, // C#, D#, E#, F#, G#, A#, B#
+  -8, -7 // Fb, Cb
 };
 //const int8_t key_signatures[12] = {0, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 6}; // Number of sharps or flats for each key: Sharps for C, G, D, A, E, B; flats for F, Bb, Eb, Ab, Db, Gb
 const int8_t sharp_notes[12][7] = {
@@ -92,22 +92,23 @@ const int8_t sharp_notes[12][7] = {
   {BTN_F, BTN_C, BTN_G},              // 3 sharps: F#, C#, G#
   {BTN_F, BTN_C, BTN_G, BTN_D},       // 4 sharps: F#, C#, G#, D#
   {BTN_F, BTN_C, BTN_G, BTN_D, BTN_A},// 5 sharps: F#, C#, G#, D#, A#
-  {BTN_F, BTN_C, BTN_G, BTN_D, BTN_A, BTN_E},         // 6 sharps: F#, C#, G#, D#, A#, E#
-  {BTN_F, BTN_C, BTN_G, BTN_D, BTN_A, BTN_E, BTN_B},  // 7 sharps: F#, C#, G#, D#, A#, E#, B#
-  {BTN_F, BTN_C, BTN_G, BTN_D, BTN_A, BTN_E, BTN_B},  // 8 sharps: G#
-  {BTN_F, BTN_C, BTN_G, BTN_D, BTN_A, BTN_E, BTN_B},  // 9 sharps: D#
-  {BTN_F, BTN_C, BTN_G, BTN_D, BTN_A, BTN_E, BTN_B},  // 10 sharps: A#
-  {BTN_F, BTN_C, BTN_G, BTN_D, BTN_A, BTN_E, BTN_B},  // 11 sharps: E#
-  {BTN_F, BTN_C, BTN_G, BTN_D, BTN_A, BTN_E, BTN_B}   // 12 sharps: B#
+  {BTN_F, BTN_C, BTN_G, BTN_D, BTN_A, BTN_E}, // 6 sharps: F#, C#, G#, D#, A#, E#
+  {BTN_F, BTN_C, BTN_G, BTN_D, BTN_A, BTN_E, BTN_B}, // 7 sharps: F#, C#, G#, D#, A#, E#, B#
+  {BTN_F, BTN_C, BTN_G, BTN_D, BTN_A, BTN_E, BTN_B}, // 8 sharps: G# major
+  {BTN_F, BTN_C, BTN_G, BTN_D, BTN_A, BTN_E, BTN_B}, // 9 sharps: D# major
+  {BTN_F, BTN_C, BTN_G, BTN_D, BTN_A, BTN_E, BTN_B}, // 10 sharps: A# major
+  {BTN_F, BTN_C, BTN_G, BTN_D, BTN_A, BTN_E, BTN_B}, // 11 sharps: E# major
+  {BTN_F, BTN_C, BTN_G, BTN_D, BTN_A, BTN_E, BTN_B}  // 12 sharps: B# major
 };
-const int8_t flat_notes[7][7] = {
+const int8_t flat_notes[8][7] = {
   {BTN_B},                            // 1 flat: Bb
   {BTN_B, BTN_E},                     // 2 flats: Bb, Eb
   {BTN_B, BTN_E, BTN_A},              // 3 flats: Bb, Eb, Ab
   {BTN_B, BTN_E, BTN_A, BTN_D},       // 4 flats: Bb, Eb, Ab, Db
   {BTN_B, BTN_E, BTN_A, BTN_D, BTN_G},// 5 flats: Bb, Eb, Ab, Db, Gb
-  {BTN_B, BTN_E, BTN_A, BTN_D, BTN_G, BTN_C},         // 6 flats: Bb, Eb, Ab, Db, Gb, Cb
-  {BTN_B, BTN_E, BTN_A, BTN_D, BTN_G, BTN_C, BTN_F}   // 7 flats: Bb, Eb, Ab, Db, Gb, Cb, Fb
+  {BTN_B, BTN_E, BTN_A, BTN_D, BTN_G, BTN_C}, // 6 flats: Bb, Eb, Ab, Db, Gb, Cb
+  {BTN_B, BTN_E, BTN_A, BTN_D, BTN_G, BTN_C, BTN_F}, // 7 flats: Bb, Eb, Ab, Db, Gb, Cb, Fb
+  {BTN_B, BTN_E, BTN_A, BTN_D, BTN_G, BTN_C, BTN_F}  // 8 flats: Fb major
 };
 
 uint8_t scalar_harp_selection = 0; // 0=Chord-based, 1=Major, 2=Major Pentatonic, 3=Minor Pentatonic, 4=Diminished 6th Scale, 5=Relative Natural Minor, 6=Relative Harmonic Minor, 7=Relative Minor Pentatonic, 8/9=Chord-specific scales
@@ -616,57 +617,66 @@ void set_harp_voice_frequency(uint8_t i, uint16_t current_note) {
 }
 // Function to compute MIDI note offset dynamically with circular frame shift
 int8_t get_root_button(uint8_t key, uint8_t shift, uint8_t button) {
-  int8_t note = base_notes[button]; // Start with base note in C (e.g., B=11, E=4, A=9, D=2, G=7, C=0, F=5)
-  
-  // Map button to musical note index (C=0, D=1, E=2, F=3, G=4, A=5, B=6)
+  int8_t note = base_notes[button]; // e.g., BTN_A=9, BTN_F=5
   int8_t musical_index;
   switch (button) {
-    case BTN_B: musical_index = 6; break; // B
-    case BTN_E: musical_index = 2; break; // E
-    case BTN_A: musical_index = 5; break; // A
-    case BTN_D: musical_index = 1; break; // D
-    case BTN_G: musical_index = 4; break; // G
-    case BTN_C: musical_index = 0; break; // C
-    case BTN_F: musical_index = 3; break; // F
-    default: musical_index = 0; // Should not happen
+    case BTN_A: musical_index = 5; break;
+    case BTN_B: musical_index = 6; break;
+    case BTN_C: musical_index = 0; break;
+    case BTN_D: musical_index = 1; break;
+    case BTN_E: musical_index = 2; break;
+    case BTN_F: musical_index = 3; break;
+    case BTN_G: musical_index = 4; break;
+    default: return note;
   }
-  
-  // Apply circular frame shift: move notes up an octave if needed
+
+  // Apply circular frame shift
   if (musical_index < shift) {
-    note += 12; // Move up one octave if the note is shifted "on top"
+    note += 12; // Move up one octave
   }
-  
-  // Apply key signature (sharps or flats)
+
+  // Apply key signature
   int8_t num_accidentals = key_signatures[key];
-  if (key <= KEY_SIG_B || (key >= KEY_SIG_Csharp && key <= KEY_SIG_Bsharp)) { // Sharp keys: C, G, D, A, E, B, C#, D#, E#, F#, G#, A#, B#
-    int8_t max_accidentals = (num_accidentals > 7) ? 7 : num_accidentals;
-    for (int i = 0; i < max_accidentals; i++) {
-      if (button == sharp_notes[num_accidentals - 1][i]) {
-        note += 1; // Add sharp
-        // Double sharps for C# (index 12)
-        if (key == KEY_SIG_Csharp && (button == BTN_C || button == BTN_F || button == BTN_A)) {
-          note += 1; // C##, F##, A##
-        }
-        // Double sharps for F# (index 15)
-        if (key == KEY_SIG_Fsharp && (button == BTN_B || button == BTN_E)) {
-          note += 1; // B##, E##
-        }
-        // Double sharps for E# (index 14, treat as 7 sharps for practicality)
-        if (key == KEY_SIG_Esharp && (button == BTN_F || button == BTN_C || button == BTN_G || button == BTN_D || button == BTN_A || button == BTN_E)) {
-          note += 1; // F##, C##, G##, D##, A##, E##
-        }
+  if (key <= KEY_SIG_B || (key >= KEY_SIG_Csharp && key <= KEY_SIG_Bsharp)) { // Sharp keys
+    int8_t max_accidentals = (num_accidentals > 12) ? 12 : num_accidentals;
+    for (int i = 0; i < max_accidentals && i < 7; i++) {
+      if (button == sharp_notes[max_accidentals - 1][i]) {
+        note += 1; // Single sharp
       }
     }
-  } else { // Flat keys: F, Bb, Eb, Ab, Db, Gb, Fb, Cb
-    int8_t max_accidentals = (-num_accidentals > 7) ? 7 : -num_accidentals;
-    for (int i = 0; i < max_accidentals; i++) {
+    // Double sharps for theoretical keys
+    if (key == KEY_SIG_Gsharp && button == BTN_F) { // G# major: F##
+      note += 1;
+    }
+    if (key == KEY_SIG_Dsharp && (button == BTN_F || button == BTN_C)) { // D# major: F##, C##
+      note += 1;
+    }
+    if (key == KEY_SIG_Asharp && (button == BTN_C || button == BTN_F || button == BTN_G)) { // A# major: C##, F##, G##
+      note += 1;
+    }
+    if (key == KEY_SIG_Esharp && (button == BTN_F || button == BTN_C || button == BTN_G || button == BTN_D)) { // E# major: F##, C##, G##, D##
+      note += 1;
+    }
+    if (key == KEY_SIG_Bsharp && (button == BTN_F || button == BTN_C || button == BTN_G || button == BTN_D || button == BTN_A)) { // B# major: F##, C##, G##, D##, A##
+      note += 1;
+    }
+  } else { // Flat keys
+    int8_t max_accidentals = (-num_accidentals > 8) ? 8 : -num_accidentals;
+    for (int i = 0; i < max_accidentals && i < 7; i++) {
       if (button == flat_notes[max_accidentals - 1][i]) {
-        note -= 1; // Add flat
+        note -= 1; // Single flat
       }
+    }
+    // Double flat for Fb major
+    if (key == KEY_SIG_Fb && button == BTN_B) { // Fb major: Bbb
+      note -= 1;
     }
   }
-  
-  return note; // No need to constrain here
+
+  Serial.print("get_root_button: key="); Serial.print(key_names[key]);
+  Serial.print(", button="); Serial.print(column_names[button]);
+  Serial.print(", note="); Serial.println(note);
+  return note;
 }
 // function to calculate the frequency of individual chord notes
 uint8_t calculate_note_chord(uint8_t voice, bool slashed, bool sharp) {
