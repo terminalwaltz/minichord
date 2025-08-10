@@ -674,8 +674,14 @@ int8_t get_root_button(uint8_t key, uint8_t shift, uint8_t button) {
     }
   }
 
+  // Ensure note is non-negative
+  while (note < 0) {
+    note += 12; // Shift up by octaves until non-negative
+  }
+
   Serial.print("get_root_button: key="); Serial.print(key_names[key]);
   Serial.print(", button="); Serial.print(column_names[button]);
+  Serial.print(", shift="); Serial.print(shift);
   Serial.print(", note="); Serial.println(note);
   return note;
 }
@@ -683,26 +689,33 @@ int8_t get_root_button(uint8_t key, uint8_t shift, uint8_t button) {
 uint8_t calculate_note_chord(uint8_t voice, bool slashed, bool sharp) {
   uint8_t note = 0;
   uint8_t level = chord_shuffling_array[chord_shuffling_selection][voice];
+  uint8_t root_note;
   if (slashed && level % 10 == note_slash_level) {
-    if (!flat_button_modifier) {
-      note = (12 * int(level / 10) + get_root_button(key_signature_selection, chord_frame_shift, slash_value) + sharp * 1.0);
-    } else {
-      note = (12 * int(level / 10) + get_root_button(key_signature_selection, chord_frame_shift, slash_value) - sharp * 1.0);
-    }
+    root_note = get_root_button(key_signature_selection, chord_frame_shift, slash_value);
+    root_note += sharp * (flat_button_modifier ? -1 : 1);
   } else {
-    if (!flat_button_modifier) {
-      note = (12 * int(level / 10) + get_root_button(key_signature_selection, chord_frame_shift, fundamental) + sharp * 1.0 + (*current_chord)[level % 10]);
-    } else {
-      note = (12 * int(level / 10) + get_root_button(key_signature_selection, chord_frame_shift, fundamental) - sharp * 1.0 + (*current_chord)[level % 10]);
-    }
+    root_note = get_root_button(key_signature_selection, chord_frame_shift, fundamental);
+    root_note += sharp * (flat_button_modifier ? -1 : 1);
   }
+  // Validate root_note
+  if (root_note > 127) {
+    root_note = root_note % 12; // Normalize to one octave
+    Serial.printf("Invalid root_note, normalized to %d\n", root_note);
+  }
+  uint8_t chord_interval = (slashed && level % 10 == note_slash_level) ? 0 : (*current_chord)[level % 10];
+  note = 12 * (level / 10) + root_note + chord_interval;
+  // Ensure note is within valid MIDI range
+  if (note > 127) {
+    note = root_note; // Fallback to root note
+    Serial.printf("Note %d out of MIDI range, defaulting to root_note=%d\n", note, root_note);
+  }
+  Serial.print("calculate_note_chord: voice="); Serial.print(voice);
+  Serial.print(", slashed="); Serial.print(slashed);
+  Serial.print(", sharp="); Serial.print(sharp);
+  Serial.print(", fundamental="); Serial.print(fundamental);
+  Serial.print(", slash_value="); Serial.print(slash_value);
+  Serial.print(", note="); Serial.println(note + midi_base_note_transposed);
   return note;
-    Serial.print("calculate_note_chord: voice="); Serial.print(voice);
-    Serial.print(", slashed="); Serial.print(slashed);
-    Serial.print(", sharp="); Serial.print(sharp);
-    Serial.print(", fundamental="); Serial.print(fundamental);
-    Serial.print(", slash_value="); Serial.print(slash_value);
-    Serial.print(", note="); Serial.println(note + midi_base_note_transposed);
 }
 // function to calculate the level of individual harp touch
 uint8_t calculate_note_harp(uint8_t string, bool slashed, bool sharp) {
@@ -764,7 +777,23 @@ uint8_t calculate_note_harp(uint8_t string, bool slashed, bool sharp) {
             root_note = get_root_button(key_signature_selection, chord_frame_shift, effective_fundamental);
             root_note += sharp * (flat_button_modifier ? -1 : 1);
         }
-        uint8_t note = root_note + chord_scale_intervals[scale_index][scale_degree] + (octave * 12);
+        // Validate root_note
+        if (root_note > 127) {
+            root_note = root_note % 12; // Normalize to one octave
+            Serial.printf("Invalid root_note, normalized to %d\n", root_note);
+        }
+        uint8_t interval = chord_scale_intervals[scale_index][scale_degree];
+        // Validate interval
+        if (interval > 12) {
+            interval = 0; // Default to root note
+            Serial.printf("Invalid interval %d for scale_index=%d, scale_degree=%d, defaulting to 0\n", interval, scale_index, scale_degree);
+        }
+        uint8_t note = root_note + interval + (octave * 12);
+        // Ensure note is within valid MIDI range
+        if (note > 127) {
+            note = root_note; // Fallback to root note
+            Serial.printf("Note %d out of MIDI range, defaulting to root_note=%d\n", note, root_note);
+        }
         Serial.printf("Chord scale mode %d, string %d, current_chord=%p, scale_index=%d, note=%d\n",
                       scalar_harp_selection, string, current_chord, scale_index, note);
         return note;
