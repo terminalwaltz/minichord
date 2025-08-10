@@ -1163,133 +1163,94 @@ void handleChordButtons() {
             }
             Serial.println("Chord window processed");
         }
-    } else {
-        // Continuous or rhythm mode
-        static unsigned long last_slash_log = 0;
-        if (current_line >= 0) {
-            fundamental = current_line;
-            slash_chord = false;
-            slash_value = -1;
-            for (int i = 1; i < 22; i++) {
-                if (chord_matrix_array[i].read_value()) {
-                    int slash_line = (i - 1) / 3;
-                    if (slash_line != current_line) {
-                        slash_chord = true;
-                        slash_value = slash_line;
-                        if (millis() - last_slash_log > 500) {
-                            Serial.print("Slash chord detected, bass row: "); Serial.println(slash_value);
-                            last_slash_log = millis();
-                        }
-                        break;
-                    }
+} else {
+    // Continuous or rhythm mode
+    static unsigned long last_slash_log = 0;
+    // Handle new button presses
+    bool new_chord_triggered = false;
+    bool chord_type_changed = false;
+    int new_line = -1;
+    for (int i = 1; i < 22; i++) {
+        if (chord_matrix_array[i].read_transition() > 1 && !inhibit_button) {
+            button_pushed = true;
+            Serial.print("Pushed button: "); Serial.println(i);
+            new_line = (i - 1) / 3;
+            // Check if current chord is active for slash chord detection
+            bool main_chord_active = false;
+            if (current_line >= 0) {
+                for (int j = 1 + current_line * 3; j <= 3 + current_line * 3; j++) {
+                    main_chord_active |= chord_matrix_array[j].read_value();
                 }
             }
-            // Check for chord type (extension) changes in current row
-            bool chord_type_changed = false;
-            for (int i = 1 + current_line * 3; i <= 3 + current_line * 3; i++) {
-                if (chord_matrix_array[i].read_transition() > 1 || (chord_matrix_array[i].read_value() && !chord_buttons_pressed[i])) {
-                    chord_buttons_pressed[i] = true;
-                    chord_type_changed = true;
-                }
-            }
-            bool button_maj = chord_matrix_array[1 + current_line * 3].read_value();
-            bool button_min = chord_matrix_array[2 + current_line * 3].read_value();
-            bool button_seventh = chord_matrix_array[3 + current_line * 3].read_value();
-            // Only stop chord in rhythm mode or if explicitly requested
-            if (!(button_maj || button_min || button_seventh) && rythm_mode) {
-                Serial.println("No chord buttons active in rhythm mode, stopping chord");
-                stopChord();
-                current_line = -1;
-                chord_sharpened = false;
+            if (current_line == -1) {
+                // Start new chord
+                memset(chord_buttons_pressed, 0, sizeof(chord_buttons_pressed));
+                chord_buttons_pressed[i] = true;
+                current_line = new_line;
+                chord_sharpened = sharp_active;
+                new_chord_triggered = true;
                 slash_chord = false;
                 slash_value = -1;
-            } else {
-                // Update chord type if changed or buttons are active
-                if (chord_type_changed || button_maj || button_min || button_seventh) {
-                    current_chord = barry_harris_mode ? &maj_sixth : &major; // Default
-                    if (button_maj && !button_min && !button_seventh) {
-                        current_chord = barry_harris_mode ? &maj_sixth : &major;
-                    } else if (!button_maj && button_min && !button_seventh) {
-                        current_chord = barry_harris_mode ? &min_sixth : &minor;
-                    } else if (!button_maj && !button_min && button_seventh) {
-                        current_chord = &seventh;
-                    } else if (button_maj && !button_min && button_seventh) {
-                        current_chord = &maj_seventh;
-                    } else if (!button_maj && button_min && button_seventh) {
-                        current_chord = &min_seventh;
-                    } else if (button_maj && button_min && !button_seventh) {
-                        current_chord = barry_harris_mode ? &full_dim : &dim;
-                    } else if (button_maj && button_min && button_seventh) {
-                        current_chord = &aug;
-                    }
-                    if (chord_type_changed) {
-                        Serial.print("Chord extension updated: ");
-                        Serial.println((current_chord == &major) ? "major" : (current_chord == &minor) ? "minor" : (current_chord == &seventh) ? "seventh" : (current_chord == &maj_seventh) ? "maj_seventh" : (current_chord == &min_seventh) ? "min_seventh" : (current_chord == &dim) ? "dim" : (current_chord == &full_dim) ? "full_dim" : (current_chord == &aug) ? "aug" : "unknown");
-                        updateNotes(slash_chord, chord_sharpened);
-                        triggerChord(retrigger_chord);
-                    }
+                Serial.print("New chord started, row: "); Serial.println(current_line);
+            } else if (new_line == current_line) {
+                // Same row, update extension
+                chord_buttons_pressed[i] = true;
+                chord_type_changed = true;
+            } else if (main_chord_active) {
+                // Different row, trigger slash chord if chord is active
+                slash_chord = true;
+                slash_value = new_line;
+                chord_buttons_pressed[i] = true;
+                if (millis() - last_slash_log > 500) {
+                    Serial.print("Slash chord detected, bass row: "); Serial.println(slash_value);
+                    last_slash_log = millis();
                 }
-                if ((button_pushed || sharp_transition == 2) && (button_maj || button_min || button_seventh)) {
-                    Serial.println("Updating chord in continuous/rhythm mode");
-                    triggerChord(!rythm_mode && !trigger_chord && !retrigger_chord);
-                }
-                if ((trigger_chord || (button_pushed && retrigger_chord)) && !rythm_mode) {
-                    Serial.println("Triggering chord in continuous mode");
-                    for (int i = 0; i < 4; i++) {
-                        note_timer[i].priority(253);
-                        note_timer[i].begin([i] { play_single_note(i, &note_timer[i]); }, 10 + chord_retrigger_release * 1000 + i * inter_string_delay + random(random_delay));
-                    }
-                    trigger_chord = false;
-                }
+                updateNotes(slash_chord, chord_sharpened);
+                triggerChord(retrigger_chord);
             }
         }
-        // Handle new button presses to start or change a chord
-        bool new_chord_triggered = false;
-        for (int i = 1; i < 22; i++) {
-            if (chord_matrix_array[i].read_transition() > 1 && !inhibit_button) {
-                button_pushed = true;
-                Serial.print("Pushed button: "); Serial.println(i);
-                int new_line = (i - 1) / 3;
-                if (current_line == -1 || new_line != current_line) {
-                    // Start new chord
-                    current_line = new_line;
-                    chord_sharpened = sharp_active;
-                    new_chord_triggered = true;
-                    Serial.print("New chord started, row: "); Serial.println(current_line);
-                    if (!continuous_chord) {
-                        trigger_chord = true;
-                    }
-                }
-            }
-        }
-        // Trigger new chord if detected
-        if (new_chord_triggered && (continuous_chord || rythm_mode)) {
-            bool button_maj = chord_matrix_array[1 + current_line * 3].read_value();
-            bool button_min = chord_matrix_array[2 + current_line * 3].read_value();
-            bool button_seventh = chord_matrix_array[3 + current_line * 3].read_value();
-            current_chord = barry_harris_mode ? &maj_sixth : &major; // Default
-            if (button_maj && !button_min && !button_seventh) {
-                current_chord = barry_harris_mode ? &maj_sixth : &major;
-            } else if (!button_maj && button_min && !button_seventh) {
-                current_chord = barry_harris_mode ? &min_sixth : &minor;
-            } else if (!button_maj && !button_min && button_seventh) {
-                current_chord = &seventh;
-            } else if (button_maj && !button_min && button_seventh) {
-                current_chord = &maj_seventh;
-            } else if (!button_maj && button_min && button_seventh) {
-                current_chord = &min_seventh;
-            } else if (button_maj && button_min && !button_seventh) {
-                current_chord = barry_harris_mode ? &full_dim : &dim;
-            } else if (button_maj && button_min && button_seventh) {
-                current_chord = &aug;
-            }
-            Serial.print("New chord triggered: ");
-            Serial.println((current_chord == &major) ? "major" : (current_chord == &minor) ? "minor" : (current_chord == &seventh) ? "seventh" : (current_chord == &maj_seventh) ? "maj_seventh" : (current_chord == &min_seventh) ? "min_seventh" : (current_chord == &dim) ? "dim" : (current_chord == &full_dim) ? "full_dim" : (current_chord == &aug) ? "aug" : "unknown");
-            updateNotes(slash_chord, chord_sharpened);
-            triggerChord(true);
-        }
-        button_pushed = false;
     }
+    // Trigger new chord or extension if detected
+    if (new_chord_triggered || chord_type_changed) {
+        bool button_maj = chord_matrix_array[1 + current_line * 3].read_value();
+        bool button_min = chord_matrix_array[2 + current_line * 3].read_value();
+        bool button_seventh = chord_matrix_array[3 + current_line * 3].read_value();
+        current_chord = barry_harris_mode ? &maj_sixth : &major; // Default
+        if (button_maj && !button_min && !button_seventh) {
+            current_chord = barry_harris_mode ? &maj_sixth : &major;
+        } else if (!button_maj && button_min && !button_seventh) {
+            current_chord = barry_harris_mode ? &min_sixth : &minor;
+        } else if (!button_maj && !button_min && button_seventh) {
+            current_chord = &seventh;
+        } else if (button_maj && !button_min && button_seventh) {
+            current_chord = &maj_seventh;
+        } else if (!button_maj && button_min && button_seventh) {
+            current_chord = &min_seventh;
+        } else if (button_maj && button_min && !button_seventh) {
+            current_chord = barry_harris_mode ? &full_dim : &dim;
+        } else if (button_maj && button_min && button_seventh) {
+            current_chord = &aug;
+        }
+        if (new_chord_triggered) {
+            Serial.print("New chord triggered: ");
+        } else if (chord_type_changed) {
+            Serial.print("Chord extension updated: ");
+        }
+        Serial.println((current_chord == &major) ? "major" : (current_chord == &minor) ? "minor" : (current_chord == &seventh) ? "seventh" : (current_chord == &maj_seventh) ? "maj_seventh" : (current_chord == &min_seventh) ? "min_seventh" : (current_chord == &dim) ? "dim" : (current_chord == &full_dim) ? "full_dim" : (current_chord == &aug) ? "aug" : "unknown");
+        updateNotes(slash_chord, chord_sharpened);
+        triggerChord(true);
+    }
+    // Continuous mode chord sustaining
+    if (current_line >= 0 && !rythm_mode && button_pushed && (trigger_chord || retrigger_chord)) {
+        Serial.println("Triggering chord in continuous mode");
+        for (int i = 0; i < 4; i++) {
+            note_timer[i].priority(253);
+            note_timer[i].begin([i] { play_single_note(i, &note_timer[i]); }, 10 + chord_retrigger_release * 1000 + i * inter_string_delay + random(random_delay));
+        }
+        trigger_chord = false;
+    }
+    button_pushed = false;
+}
     // Node Z: Finish
 }
 
