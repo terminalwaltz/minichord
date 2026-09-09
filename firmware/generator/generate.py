@@ -346,3 +346,49 @@ with open('parameters.json') as f:
     # Copy the parameters.json file to the ../minicontrol/json folder
     destination_folder = "../minicontrol/json"
     shutil.copy('parameters.json', destination_folder)
+
+# Generating the parameter lookup table
+lookup_file_content = """#ifndef PARAMETER_LOOKUP_H
+#define PARAMETER_LOOKUP_H
+
+struct ParameterInfo {
+    uint8_t sysex_adress;
+    bool is_integer;
+    bool is_percent; // a percent-range control: mapped continuously, not quantised
+    int16_t min_value;
+    int16_t max_value;
+};
+
+static const ParameterInfo parameter_lookup[] = {
+"""
+
+with open('parameters.json') as f:
+    d = json.load(f)
+    parameter_sections = ["global_parameter", "harp_parameter", "chord_parameter"]
+    for section in parameter_sections:
+        if section in d:
+            for parameter in d[section]:
+                try:
+                    sysex_adress = parameter["sysex_adress"]
+                    is_integer = 1 if parameter["data_type"] == "int" else 0
+                    # the struct stores int16_t, and these bounds are only read for
+                    # integer targets, so round rather than emit a narrowing conversion
+                    min_value = int(round(parameter["min_value"]))
+                    max_value = int(round(parameter["max_value"]))
+                    param_name = parameter.get("name", "unnamed")  # Use 'unnamed' if name is missing
+                    # percent-range controls are declared "int" but behave continuously,
+                    # so they are mapped across their full range rather than quantised
+                    is_percent = 1 if "percent range" in param_name else 0
+                    lookup_file_content += f"    {{ {sysex_adress}, {is_integer}, {is_percent}, {min_value}, {max_value} }}, // {param_name}\n"
+                except KeyError as e:
+                    print(f"Missing entry in JSON for {section}: {parameter}, error: {e}")
+                    continue
+
+lookup_file_content += """};
+
+#endif // PARAMETER_LOOKUP_H
+"""
+
+# Write the lookup table to a new file
+with open('../lib/potentiometer/src/parameter_lookup.h', 'w') as lookup_output:
+    lookup_output.write(lookup_file_content)
