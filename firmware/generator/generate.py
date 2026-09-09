@@ -136,7 +136,16 @@ with open('parameters.json') as f: # Reserved adresses: 0 for system command and
                                                 a.dfn(title=parameter["tooltip"], _t=parameter["name"])
                                                 #a.label(for_=id_iterator, _t=parameter["name"])
                                             with a.div(klass=" bloc B2 M2 S4"):
-                                                if(parameter["data_type"]=="int"):
+                                                if(parameter["data_type"]=="degrees"):
+                                                    # a row of twelve checkboxes, one per chromatic degree,
+                                                    # all writing bits of a single parameter
+                                                    with a.span(klass="degree_row", adress_field=parameter["sysex_adress"], id=id_iterator):
+                                                        for bit, label in enumerate(["1","b2","2","b3","3","4","b5","5","b6","6","b7","7"]):
+                                                            with a.label(klass="degree"):
+                                                                a.input(klass="degree_box inactive", adress_field=parameter["sysex_adress"],
+                                                                        data_type="degrees", bit=bit, onchange='handledegree(this)', type='checkbox')
+                                                                a.span(_t=label)
+                                                elif(parameter["data_type"]=="int"):
                                                     a.input(klass="slider inactive",adress_field=parameter["sysex_adress"], curve=parameter["curve"],data_type=parameter["data_type"], id=id_iterator, max=parameter["max_value"], min=parameter["min_value"], onchange='handlechange(this)', step='1', target_max=parameter["max_value"], target_min=parameter["min_value"], type='range', value=parameter["default_value"])
                                                 else:
                                                     a.input(klass="slider inactive",adress_field=parameter["sysex_adress"], curve=parameter["curve"],data_type=parameter["data_type"], id=id_iterator, max=parameter["max_value"], min=parameter["min_value"], onchange='handlechange(this)', step='0.01', target_max=parameter["max_value"], target_min=parameter["min_value"], type='range', value=parameter["default_value"])
@@ -194,7 +203,16 @@ with open('parameters.json') as f: # Reserved adresses: 0 for system command and
                                                 a.dfn(title=parameter["tooltip"], _t=parameter["name"])
                                                 #a.label(for_=id_iterator, _t=parameter["name"])
                                             with a.div(klass=" bloc B2 M2 S4"):
-                                                if(parameter["data_type"]=="int"):
+                                                if(parameter["data_type"]=="degrees"):
+                                                    # a row of twelve checkboxes, one per chromatic degree,
+                                                    # all writing bits of a single parameter
+                                                    with a.span(klass="degree_row", adress_field=parameter["sysex_adress"], id=id_iterator):
+                                                        for bit, label in enumerate(["1","b2","2","b3","3","4","b5","5","b6","6","b7","7"]):
+                                                            with a.label(klass="degree"):
+                                                                a.input(klass="degree_box inactive", adress_field=parameter["sysex_adress"],
+                                                                        data_type="degrees", bit=bit, onchange='handledegree(this)', type='checkbox')
+                                                                a.span(_t=label)
+                                                elif(parameter["data_type"]=="int"):
                                                     a.input(klass="slider inactive",adress_field=parameter["sysex_adress"], curve=parameter["curve"],data_type=parameter["data_type"], id=id_iterator, max=parameter["max_value"], min=parameter["min_value"], onchange='handlechange(this)', step='1', target_max=parameter["max_value"], target_min=parameter["min_value"], type='range', value=parameter["default_value"])
                                                 else:
                                                     a.input(klass="slider inactive",adress_field=parameter["sysex_adress"], curve=parameter["curve"],data_type=parameter["data_type"], id=id_iterator, max=parameter["max_value"], min=parameter["min_value"], onchange='handlechange(this)', step='0.01', target_max=parameter["max_value"], target_min=parameter["min_value"], type='range', value=parameter["default_value"])
@@ -252,7 +270,16 @@ with open('parameters.json') as f: # Reserved adresses: 0 for system command and
                                                 a.dfn(title=parameter["tooltip"], _t=parameter["name"])
                                                 #a.label(for_=id_iterator, _t=parameter["name"])
                                             with a.div(klass=" bloc B2 M2 S4"):
-                                                if(parameter["data_type"]=="int"):
+                                                if(parameter["data_type"]=="degrees"):
+                                                    # a row of twelve checkboxes, one per chromatic degree,
+                                                    # all writing bits of a single parameter
+                                                    with a.span(klass="degree_row", adress_field=parameter["sysex_adress"], id=id_iterator):
+                                                        for bit, label in enumerate(["1","b2","2","b3","3","4","b5","5","b6","6","b7","7"]):
+                                                            with a.label(klass="degree"):
+                                                                a.input(klass="degree_box inactive", adress_field=parameter["sysex_adress"],
+                                                                        data_type="degrees", bit=bit, onchange='handledegree(this)', type='checkbox')
+                                                                a.span(_t=label)
+                                                elif(parameter["data_type"]=="int"):
                                                     a.input(klass="slider inactive",adress_field=parameter["sysex_adress"], curve=parameter["curve"],data_type=parameter["data_type"], id=id_iterator, max=parameter["max_value"], min=parameter["min_value"], onchange='handlechange(this)', step='1', target_max=parameter["max_value"], target_min=parameter["min_value"], type='range', value=parameter["default_value"])
                                                 else:
                                                     a.input(klass="slider inactive",adress_field=parameter["sysex_adress"], curve=parameter["curve"],data_type=parameter["data_type"], id=id_iterator, max=parameter["max_value"], min=parameter["min_value"], onchange='handlechange(this)', step='0.01', target_max=parameter["max_value"], target_min=parameter["min_value"], type='range', value=parameter["default_value"])
