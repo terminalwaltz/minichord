@@ -942,11 +942,31 @@ void handle_harp() {
   }
 }
 
+const uint16_t chord_release_settle = 20; // ms a shrinking button set must hold before it counts
+
 void handle_chord_type(bool button_maj, bool button_min, bool button_seventh) {
-  if (!(button_maj || button_min || button_seventh)) {
+  static uint8_t previous_button_count = 0;
+  static elapsedMillis shrink_timer;
+  uint8_t count = (uint8_t)button_maj + (uint8_t)button_min + (uint8_t)button_seventh;
+
+  if (count == 0) {
+    previous_button_count = 0;
     current_line = -1;
     return;
   }
+
+  // The buttons of a combination do not release at the same instant, and
+  // read_value() is the raw pin state: only read_transition() is debounced.
+  // Letting go of a major seventh is therefore seen as a plain major for a
+  // moment on the way out, which leaves current_chord wrong for anything that
+  // recalculates afterwards - a chord held by the hold button, most visibly.
+  if (count < previous_button_count) {
+    if (shrink_timer < chord_release_settle) return;
+  } else {
+    shrink_timer = 0;
+  }
+  previous_button_count = count;
+
   if (button_maj && !button_min && !button_seventh) {
     current_chord = barry_harris_mode ? &maj_sixth : &major;
   } else if (!button_maj && button_min && !button_seventh) {
