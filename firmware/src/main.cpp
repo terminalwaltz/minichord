@@ -12,7 +12,7 @@
 #include <potentiometer.h>
 
 //>>SOFWTARE VERSION 
-int version_ID=8; //to be read 00.03, stored at adress 7 in memory
+int version_ID=9; //to be read 00.03, stored at adress 7 in memory
 //>>BUTTON ARRAYS<<
 debouncer harp_array[12];
 debouncer chord_matrix_array[22];
@@ -220,6 +220,10 @@ int8_t chord_shuffling_array[6][7] = {
     {10, 11, 12, 13, 2, 15, 16},//one octave up with low fifth and high chromatics
     {20, 21, 22, 23, 24, 25, 26}};//two octave up
 int8_t chord_shuffling_selection = 0;
+uint8_t chord_inversion = 0; // 0 = root position, 1-3 = successive inversions
+uint8_t chord_spacing = 0;   // 0 = close, 1 = drop 2, 2 = drop 3, 3 = drop 2+4, 4 = spread
+const int8_t chord_note_floor = 12;  // below this the chord voices turn to mud
+const int8_t chord_note_ceiling = 96;
 // retrigger release for chord delayed note
 
 int chord_retrigger_release=0;
@@ -600,6 +604,93 @@ int8_t get_root_button(uint8_t key, uint8_t shift, uint8_t button) {
   return note; //No need to constrain here
 }
 // function to calculate the frequency of individual chord notes
+// Collects the distinct tones of the current chord, reduced into a single octave
+// and sorted low to high. The first four entries of a chord table are the chord
+// proper, so a triad whose fourth entry is the octave yields three tones while a
+// seventh or sixth chord yields four. Returns how many were found.
+uint8_t collect_chord_tones(uint8_t (*chord)[7], uint8_t *tones) {
+  uint8_t n = 0;
+  for (uint8_t i = 0; i < 4; i++) {
+    uint8_t t = (*chord)[i] % 12;
+    bool duplicate = false;
+    for (uint8_t j = 0; j < n; j++) {
+      if (tones[j] == t) duplicate = true;
+    }
+    if (!duplicate) tones[n++] = t;
+  }
+  for (uint8_t i = 1; i < n; i++) { // insertion sort, n is at most 4
+    uint8_t key = tones[i];
+    int8_t j = i - 1;
+    while (j >= 0 && tones[j] > key) { tones[j + 1] = tones[j]; j--; }
+    tones[j + 1] = key;
+  }
+  return n;
+}
+
+// Semitone offset of a voice for the current inversion. Voices stack upward
+// through the repeating chord tones, so inversion N starts that stack N steps
+// higher. Working from pitch rather than from the chord table's index order
+// matters: seventh chords list the seventh before the fifth, so rotating
+// indices would not produce an inversion.
+int16_t inverted_voice_offset(uint8_t (*chord)[7], uint8_t voice, uint8_t inversion) {
+  uint8_t tones[4];
+  uint8_t n = collect_chord_tones(chord, tones);
+  if (n == 0) return 0;
+  uint8_t k = voice + inversion;
+  return tones[k % n] + 12 * (k / n);
+}
+
+// Offset of a chord tone for this voice. The four chord voices follow the
+// inversion; the extra voices used in rythm mode keep the shuffling array's
+// own choice of added tones.
+// How far a voice moves for the current spacing. Drop voicings take a voice
+// down an octave to open the chord out; the numbering counts from the top, so
+// "drop 2" is the second voice down. Once the inversion step has run the voices
+// are in pitch order, which is what makes this expressible per voice.
+int8_t chord_spacing_shift(uint8_t voice) {
+  switch (chord_spacing) {
+    case 1: return (voice == 2) ? -12 : 0;                        // drop 2
+    case 2: return (voice == 1) ? -12 : 0;                        // drop 3
+    case 3: return (voice == 2 || voice == 0) ? -12 : 0;          // drop 2 and 4
+    case 4: return (voice == 0) ? -12 : ((voice == 3) ? 12 : 0);  // spread the outer voices
+    default: return 0;
+  }
+}
+
+// Moves a voice for the current spacing, but only when there is room. A drop
+// that would take the chord below the usable range is simply not made, so the
+// voicing narrows at the extremes rather than wrapping into noise.
+uint8_t apply_chord_spacing(uint8_t note, uint8_t voice, uint8_t level, bool slashed, bool sharp) {
+  if (chord_spacing == 0 || voice >= 4 || level % 10 >= 4) return note;
+  int8_t shift = chord_spacing_shift(voice);
+  if (shift == 0) return note;
+  if (shift < 0 && (int16_t)note + shift < chord_note_floor) return note;
+  if (shift > 0 && (int16_t)note + shift > chord_note_ceiling) return note;
+
+  // A slash chord names its own bass, so a dropped voice must not end up
+  // underneath it. Another octave of the slash root is fine, and thickens it;
+  // any other tone below would turn a C/G into something closer to a C/E.
+  if (slashed && shift < 0) {
+    int8_t slash_offset = sharp ? (flat_button_modifier ? -1 : 1) : 0;
+    int16_t slash_note = 12 * (level / 10)
+      + get_root_button(key_signature_selection, chord_frame_shift, slash_value)
+      + slash_offset;
+    int16_t moved = (int16_t)note + shift;
+    if (moved < slash_note && (moved % 12) != (slash_note % 12)) return note;
+  }
+  return note + shift;
+}
+
+int16_t chord_tone_offset(uint8_t level, uint8_t voice) {
+  // Spacing needs the voices in pitch order, so it uses the same sorted path as
+  // inversion. At inversion 0 that reorders which oscillator plays which note
+  // without changing the notes themselves, so nothing sounds different.
+  if ((chord_inversion > 0 || chord_spacing > 0) && voice < 4 && level % 10 < 4) {
+    return inverted_voice_offset(current_chord, voice, chord_inversion);
+  }
+  return (*current_chord)[level % 10];
+}
+
 uint8_t calculate_note_chord(uint8_t voice, bool slashed, bool sharp) {
   uint8_t note = 0;
   uint8_t level = chord_shuffling_array[chord_shuffling_selection][voice];
@@ -611,9 +702,11 @@ uint8_t calculate_note_chord(uint8_t voice, bool slashed, bool sharp) {
     }
   } else {
     if (!flat_button_modifier) {
-      note = (12 * int(level / 10) + get_root_button(key_signature_selection, chord_frame_shift, fundamental) + sharp * 1.0 + (*current_chord)[level % 10]);
+      note = (12 * int(level / 10) + get_root_button(key_signature_selection, chord_frame_shift, fundamental) + sharp * 1.0 + chord_tone_offset(level, voice));
+      note = apply_chord_spacing(note, voice, level, slashed, sharp);
     } else {
-      note = (12 * int(level / 10) + get_root_button(key_signature_selection, chord_frame_shift, fundamental) - sharp * 1.0 + (*current_chord)[level % 10]);
+      note = (12 * int(level / 10) + get_root_button(key_signature_selection, chord_frame_shift, fundamental) - sharp * 1.0 + chord_tone_offset(level, voice));
+      note = apply_chord_spacing(note, voice, level, slashed, sharp);
     }
   }
   return note;
