@@ -12,7 +12,7 @@
 #include <potentiometer.h>
 
 //>>SOFWTARE VERSION 
-int version_ID=8; //to be read 00.03, stored at adress 7 in memory
+int version_ID=9; //to be read 00.03, stored at adress 7 in memory
 //>>BUTTON ARRAYS<<
 debouncer harp_array[12];
 debouncer chord_matrix_array[22];
@@ -42,6 +42,24 @@ uint8_t seventh[7] = {0, 4, 10, 7, 2, 5, 9};
 uint8_t maj_seventh[7] = {0, 4, 11, 7, 2, 5, 9};
 uint8_t min_seventh[7] = {0, 3, 10, 7, 1, 5, 8};
 uint8_t aug[7] = {0, 4, 8, 12, 2, 5, 9};
+
+//>>ALTERNATE CHORD LAYOUT<<
+// A second reading of the same seven button combinations. The three chord
+// buttons give seven combinations and all seven are already spoken for, so
+// suspended and extended chords need a layout rather than new buttons.
+// Four voices, so the ninth chords drop their fifth, which is how a player
+// would voice them anyway.
+uint8_t sus_fourth[7]   = {0, 5, 7, 12, 2, 9, 10};  // sus4
+uint8_t sus_second[7]   = {0, 2, 7, 12, 5, 9, 4};   // sus2
+uint8_t seventh_sus[7]  = {0, 5, 10, 7, 2, 9, 4};   // 7sus4
+uint8_t major_ninth[7]  = {0, 4, 11, 2, 7, 5, 9};   // maj9, no fifth
+uint8_t minor_ninth[7]  = {0, 3, 10, 2, 7, 5, 8};   // min9, no fifth
+uint8_t added_ninth[7]  = {0, 4, 7, 2, 5, 9, 11};   // add9
+uint8_t six_nine[7]     = {0, 4, 9, 2, 7, 5, 11};   // 6/9
+uint8_t half_dim[7]     = {0, 3, 6, 10, 2, 5, 8};   // m7b5
+
+
+uint8_t alt_chord_layout = 0;   // 0 = standard chords, 1 = the assignable layout
 uint8_t dim[7] = {0, 3, 6, 12, 2, 5, 9};
 uint8_t full_dim[7] = {0, 3, 6, 9, 2, 5, 12};
 uint8_t key_signature_selection = 0; // 0=C, 1=G, 2=D, 3=A, 4=E, 5=B, 6=F, 7=Bb, 8=Eb, 9=Ab, 10=Db, 11=Gb
@@ -125,6 +143,33 @@ int16_t default_bank_sysex_parameters[preset_number][parameter_size] = {
   {0,0,50,50,512,512,512,0,0,0,194,100,85,100,60,100,61,100,0,0,340,1,0,0,0,0,0,0,0,62,0,0,0,0,0,0,0,0,0,0,4,25,3,3,29,18,65,488,3,159,25,70,5,18,4,26,40,1,77,0,587,32,0,715,11,76,1,1,100,1,1,68,17,14,22,20,17,340,1682,70,48,0,0,100,18,54,0,0,800,70,57,100,100,0,0,0,0,199,0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,3,1,100,0,0,100,6,8,200,2,50,36,75,50,28,0,3,1,1,80,1218,2,706,38,114,19,8,32,80,1,1,0,30,0,0,0,0,0,0,0,24,0,3,1,1,1,100,1,1,100,1,1,1,1,31,0,0,70,0,0,0,100,0,33,2,1,162,16,4,100,100,678,118,100,50,32,168,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,13,0,4,0,7,0,0,2,13,0,0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
 }; 
 int16_t current_sysex_parameters[parameter_size] = {0,0,50,50,512,512,512,1,0,0,192,100,49,100,184,100,157,100,0,0,0,0,0,0,0,0,0,0,0,67,0,0,0,0,0,0,0,0,0,0,0,16,0,8,8,12,42,1171,1,423,20,70,3,35,83,59,2658,1,0,0,0,0,0,0,0,1,1,1,100,1,1,0,1,1,1,1,14,0,0,70,0,0,0,100,0,6,0,0,755,195,23,61,29,0,0,0,0,162,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,13,8,100,16,0,200,0,0,50,0,50,18,32,50,0,0,10,66,353,65,995,1,569,16,141,32,83,28,48,54,1,0,0,0,56,0,389,0,20,0,0,0,0,1,1,1,0,1,1,0,1,1,1,1,0,0,0,70,0,0,0,100,0,38,0,0,80,16,4,94,753,474,70,5,100,100,100,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,16,0,6,6,32,0,6,0,16,0,6,6,32,0,6,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+
+// Every chord the instrument can make, in one list, so a button combination can
+// be pointed at any of them rather than at a fixed table.
+uint8_t (*chord_catalogue[18])[7] = {
+  &major, &minor, &seventh, &maj_seventh, &min_seventh, &dim, &aug,
+  &maj_sixth, &min_sixth, &full_dim, &half_dim,
+  &sus_fourth, &sus_second, &seventh_sus,
+  &major_ninth, &minor_ninth, &added_ninth, &six_nine
+};
+const uint8_t chord_catalogue_size = 18;
+
+// Which entry of the catalogue each button combination plays in the alternate
+// layout. The defaults give the suspended and extended set; any slot can be
+// pointed somewhere else, so the layout doubles the available chords or just
+// moves them to where a particular player wants them.
+const uint8_t alt_slot_adress[7] = {202, 203, 204, 205, 206, 207, 208};
+// What each slot plays when its parameter is 0. That matters for compatibility:
+// a preset saved before these addresses existed holds 0 in all of them, and
+// should still give the suspended and extended set rather than seven majors.
+const uint8_t alt_slot_default[7] = {11, 12, 13, 14, 15, 16, 17};
+
+uint8_t (*alt_chord_for(uint8_t slot))[7] {
+  int16_t index = current_sysex_parameters[alt_slot_adress[slot]];
+  if (index <= 0 || index > chord_catalogue_size) index = alt_slot_default[slot];
+  else index -= 1;   // 1 selects the first catalogue entry, so 0 stays free for the default
+  return chord_catalogue[index];
+}
 const char *bank_name[preset_number] = {"a.txt", "b.txt", "c.txt", "d.txt", "e.txt", "f.txt", "g.txt", "h.txt", "i.txt", "j.txt", "k.txt", "l.txt"};
 int8_t current_bank_number = 0;
 float bank_led_hue = 0;
@@ -942,11 +987,42 @@ void handle_harp() {
   }
 }
 
+const uint16_t chord_release_settle = 20; // ms a shrinking button set must hold before it counts
+
 void handle_chord_type(bool button_maj, bool button_min, bool button_seventh) {
-  if (!(button_maj || button_min || button_seventh)) {
+  static uint8_t previous_button_count = 0;
+  static elapsedMillis shrink_timer;
+  uint8_t count = (uint8_t)button_maj + (uint8_t)button_min + (uint8_t)button_seventh;
+
+  if (count == 0) {
+    previous_button_count = 0;
     current_line = -1;
     return;
   }
+
+  // The buttons of a combination do not release at the same instant, and
+  // read_value() is the raw pin state: only read_transition() is debounced.
+  // Letting go of a major seventh is therefore seen as a plain major for a
+  // moment on the way out, which leaves current_chord wrong for anything that
+  // recalculates afterwards - a chord held by the hold button, most visibly.
+  if (count < previous_button_count) {
+    if (shrink_timer < chord_release_settle) return;
+  } else {
+    shrink_timer = 0;
+  }
+  previous_button_count = count;
+
+  if (alt_chord_layout) {
+    if (button_maj && !button_min && !button_seventh)            current_chord = alt_chord_for(0);
+    else if (!button_maj && button_min && !button_seventh)       current_chord = alt_chord_for(1);
+    else if (!button_maj && !button_min && button_seventh)       current_chord = alt_chord_for(2);
+    else if (button_maj && !button_min && button_seventh)        current_chord = alt_chord_for(3);
+    else if (!button_maj && button_min && button_seventh)        current_chord = alt_chord_for(4);
+    else if (button_maj && button_min && !button_seventh)        current_chord = alt_chord_for(5);
+    else if (button_maj && button_min && button_seventh)         current_chord = alt_chord_for(6);
+    return;
+  }
+
   if (button_maj && !button_min && !button_seventh) {
     current_chord = barry_harris_mode ? &maj_sixth : &major;
   } else if (!button_maj && button_min && !button_seventh) {
