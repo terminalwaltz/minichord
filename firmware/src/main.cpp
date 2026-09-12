@@ -435,6 +435,7 @@ elapsedMillis key_change_log_timer; // throttle for debug output only
 const uint32_t KEY_CHANGE_BLINK_US = 150000; // LED blink half-period while waiting
 const uint32_t SIMULTANEOUS_WINDOW = 400;  // both buttons must arrive within this
 const uint32_t PRESET_INHIBIT_DELAY = 400; // presets stay inhibited this long after
+int8_t key_change_reported = -1;   // last key signature reported to the host
 elapsedMillis note_off_timing[4];
 elapsedMicros last_midi_clock_in;
 int midi_clock_current_step=0;
@@ -1769,7 +1770,13 @@ void handle_key_change_mode(uint8_t up_transition, uint8_t down_transition, bool
   if (key_change_mode && (!up_state || !down_state)) {
     key_change_mode = false;
     set_led_color(bank_led_hue, 1.0, 1 - led_attenuation);
-    if (double_tap_engaged) {
+    // The combo changes address 35 without the host seeing anything: a re-keyed
+    // chord is byte-identical over MIDI to a different chord already on the
+    // grid, so a remote cannot infer it. Report the settled value once, on the
+    // way out, rather than on every selection while the player auditions keys.
+    if (key_change_reported != key_signature_selection) {
+      key_change_reported = key_signature_selection;
+      control_command(0, 0);
     }
     preset_inhibit = true;
     preset_inhibit_timer = 0;
