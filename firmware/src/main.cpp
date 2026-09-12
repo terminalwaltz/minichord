@@ -1915,9 +1915,13 @@ void toggle_double_tap_target() {
     current_sysex_parameters[adress] = value;
     apply_audio_parameter(adress, value);
     double_tap_engaged = true;
-    if (!key_change_mode) {
-    }
   }
+  // The gesture changes a parameter with nothing on the wire to show it, so a
+  // remote editor keeps displaying the value the player has just toggled away
+  // from. Report the new state so the control on screen follows the gesture.
+  // save_config still writes the underlying value, so a save while engaged is
+  // unaffected by this.
+  control_command(0, 0);
 }
 
 void loop() {
