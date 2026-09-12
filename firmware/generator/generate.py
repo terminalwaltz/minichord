@@ -136,7 +136,16 @@ with open('parameters.json') as f: # Reserved adresses: 0 for system command and
                                                 a.dfn(title=parameter["tooltip"], _t=parameter["name"])
                                                 #a.label(for_=id_iterator, _t=parameter["name"])
                                             with a.div(klass=" bloc B2 M2 S4"):
-                                                if(parameter["data_type"]=="int"):
+                                                if(parameter["data_type"]=="degrees"):
+                                                    # a row of twelve checkboxes, one per chromatic degree,
+                                                    # all writing bits of a single parameter
+                                                    with a.span(klass="degree_row", adress_field=parameter["sysex_adress"], id=id_iterator):
+                                                        for bit, label in enumerate(["1","b2","2","b3","3","4","b5","5","b6","6","b7","7"]):
+                                                            with a.label(klass="degree"):
+                                                                a.input(klass="degree_box inactive", adress_field=parameter["sysex_adress"],
+                                                                        data_type="degrees", bit=bit, onchange='handledegree(this)', type='checkbox')
+                                                                a.span(_t=label)
+                                                elif(parameter["data_type"]=="int"):
                                                     a.input(klass="slider inactive",adress_field=parameter["sysex_adress"], curve=parameter["curve"],data_type=parameter["data_type"], id=id_iterator, max=parameter["max_value"], min=parameter["min_value"], onchange='handlechange(this)', step='1', target_max=parameter["max_value"], target_min=parameter["min_value"], type='range', value=parameter["default_value"])
                                                 else:
                                                     a.input(klass="slider inactive",adress_field=parameter["sysex_adress"], curve=parameter["curve"],data_type=parameter["data_type"], id=id_iterator, max=parameter["max_value"], min=parameter["min_value"], onchange='handlechange(this)', step='0.01', target_max=parameter["max_value"], target_min=parameter["min_value"], type='range', value=parameter["default_value"])
@@ -194,7 +203,16 @@ with open('parameters.json') as f: # Reserved adresses: 0 for system command and
                                                 a.dfn(title=parameter["tooltip"], _t=parameter["name"])
                                                 #a.label(for_=id_iterator, _t=parameter["name"])
                                             with a.div(klass=" bloc B2 M2 S4"):
-                                                if(parameter["data_type"]=="int"):
+                                                if(parameter["data_type"]=="degrees"):
+                                                    # a row of twelve checkboxes, one per chromatic degree,
+                                                    # all writing bits of a single parameter
+                                                    with a.span(klass="degree_row", adress_field=parameter["sysex_adress"], id=id_iterator):
+                                                        for bit, label in enumerate(["1","b2","2","b3","3","4","b5","5","b6","6","b7","7"]):
+                                                            with a.label(klass="degree"):
+                                                                a.input(klass="degree_box inactive", adress_field=parameter["sysex_adress"],
+                                                                        data_type="degrees", bit=bit, onchange='handledegree(this)', type='checkbox')
+                                                                a.span(_t=label)
+                                                elif(parameter["data_type"]=="int"):
                                                     a.input(klass="slider inactive",adress_field=parameter["sysex_adress"], curve=parameter["curve"],data_type=parameter["data_type"], id=id_iterator, max=parameter["max_value"], min=parameter["min_value"], onchange='handlechange(this)', step='1', target_max=parameter["max_value"], target_min=parameter["min_value"], type='range', value=parameter["default_value"])
                                                 else:
                                                     a.input(klass="slider inactive",adress_field=parameter["sysex_adress"], curve=parameter["curve"],data_type=parameter["data_type"], id=id_iterator, max=parameter["max_value"], min=parameter["min_value"], onchange='handlechange(this)', step='0.01', target_max=parameter["max_value"], target_min=parameter["min_value"], type='range', value=parameter["default_value"])
@@ -252,7 +270,16 @@ with open('parameters.json') as f: # Reserved adresses: 0 for system command and
                                                 a.dfn(title=parameter["tooltip"], _t=parameter["name"])
                                                 #a.label(for_=id_iterator, _t=parameter["name"])
                                             with a.div(klass=" bloc B2 M2 S4"):
-                                                if(parameter["data_type"]=="int"):
+                                                if(parameter["data_type"]=="degrees"):
+                                                    # a row of twelve checkboxes, one per chromatic degree,
+                                                    # all writing bits of a single parameter
+                                                    with a.span(klass="degree_row", adress_field=parameter["sysex_adress"], id=id_iterator):
+                                                        for bit, label in enumerate(["1","b2","2","b3","3","4","b5","5","b6","6","b7","7"]):
+                                                            with a.label(klass="degree"):
+                                                                a.input(klass="degree_box inactive", adress_field=parameter["sysex_adress"],
+                                                                        data_type="degrees", bit=bit, onchange='handledegree(this)', type='checkbox')
+                                                                a.span(_t=label)
+                                                elif(parameter["data_type"]=="int"):
                                                     a.input(klass="slider inactive",adress_field=parameter["sysex_adress"], curve=parameter["curve"],data_type=parameter["data_type"], id=id_iterator, max=parameter["max_value"], min=parameter["min_value"], onchange='handlechange(this)', step='1', target_max=parameter["max_value"], target_min=parameter["min_value"], type='range', value=parameter["default_value"])
                                                 else:
                                                     a.input(klass="slider inactive",adress_field=parameter["sysex_adress"], curve=parameter["curve"],data_type=parameter["data_type"], id=id_iterator, max=parameter["max_value"], min=parameter["min_value"], onchange='handlechange(this)', step='0.01', target_max=parameter["max_value"], target_min=parameter["min_value"], type='range', value=parameter["default_value"])
@@ -342,6 +369,43 @@ with open('parameters.json') as f:
         else:
             print("Missing chord parameters in JSON")
         cpp_output.write(cpp_end_file)
+
+    # Emit a lookup table of declared parameter bounds, so the potentiometer
+    # library can map discrete targets across their real range rather than
+    # scaling around whatever value happens to be stored.
+    lookup_file_content = """#ifndef PARAMETER_LOOKUP_H
+#define PARAMETER_LOOKUP_H
+
+// Generated by generator/generate.py - do not edit by hand
+
+#include <stdint.h>
+
+struct ParameterInfo {
+    uint8_t sysex_adress;
+    bool is_integer;
+    int16_t min_value;
+    int16_t max_value;
+};
+
+static const ParameterInfo parameter_lookup[] = {
+"""
+    for section in d:
+        for parameter in d[section]:
+            if all(k in parameter for k in ("sysex_adress", "min_value", "max_value", "data_type")):
+                is_integer = 1 if parameter["data_type"] == "int" else 0
+                # the struct stores int16_t and these bounds are only read for
+                # integer targets, so round rather than narrow from double
+                min_value = int(round(parameter["min_value"]))
+                max_value = int(round(parameter["max_value"]))
+                name = parameter.get("name", "unnamed")
+                lookup_file_content += "    { %d, %d, %d, %d }, // %s\n" % (
+                    parameter["sysex_adress"], is_integer, min_value, max_value, name)
+    lookup_file_content += """};
+
+#endif // PARAMETER_LOOKUP_H
+"""
+    with open('../lib/potentiometer/src/parameter_lookup.h', 'w') as lookup_output:
+        lookup_output.write(lookup_file_content)
 
     # Copy the parameters.json file to the ../minicontrol/json folder
     destination_folder = "../minicontrol/json"

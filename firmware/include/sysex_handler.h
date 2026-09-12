@@ -39,6 +39,48 @@ void apply_audio_parameter(int adress, int value) {
       case 35:
         key_signature_selection=value;
         break;
+      case 37:
+        chord_inversion=value; for (int i = 0; i < 7; i++) { current_chord_notes[i]=calculate_note_chord(i,slash_chord,sharp_active); } for (int i = 0; i < 4; i++) { if (chord_envelope_array[i]->isActive()) { set_chord_voice_frequency(i, current_chord_notes[i]); } }
+        break;
+      case 38:
+        chord_spacing=value; for (int i = 0; i < 7; i++) { current_chord_notes[i]=calculate_note_chord(i,slash_chord,sharp_active); } for (int i = 0; i < 4; i++) { if (chord_envelope_array[i]->isActive()) { set_chord_voice_frequency(i, current_chord_notes[i]); } }
+        break;
+      case 39:
+        alt_chord_layout=value;
+        break;
+      case 202:
+        
+        break;
+      case 203:
+        
+        break;
+      case 204:
+        
+        break;
+      case 205:
+        
+        break;
+      case 206:
+        
+        break;
+      case 207:
+        
+        break;
+      case 208:
+        
+        break;
+      case 200:
+        
+        break;
+      case 201:
+        
+        break;
+      case 36:
+        scalar_harp_selection=value; for (int i=0;i<12;i++){ current_harp_notes[i]=calculate_note_harp(i,slash_chord,sharp_active); }
+        break;
+      case 236:
+        custom_scale_mask=value; rebuild_custom_scale(); for (int i=0;i<12;i++){ current_harp_notes[i]=calculate_note_harp(i,slash_chord,sharp_active); }
+        break;
       case 24:
         main_reverb.size(value/100.0);
         break;
@@ -92,6 +134,9 @@ void apply_audio_parameter(int adress, int value) {
         break;
       case 7:
         current_sysex_parameters[7]=version_ID;
+        break;
+      case 255:
+        a4_master_tuning = constrain(value / 10.0, 432.0, 446.0); c_frequency = 130.81 * (a4_master_tuning / 440.0); master_tuning_dirty = true; master_tuning_save_timer = 0; for (int i = 0; i < 4; i++) { if (chord_envelope_array[i]->isActive()) { set_chord_voice_frequency(i, current_chord_notes[i]); } } for (int i = 0; i < 12; i++) { if (string_enveloppe_array[i]->isActive()) { set_harp_voice_frequency(i, current_harp_notes[i]); } }
         break;
       case 2:
         string_gain.amplitude(value/100.0,100);  harp_attack_velocity=value/100.0*127;
