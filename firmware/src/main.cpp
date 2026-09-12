@@ -12,7 +12,7 @@
 #include <potentiometer.h>
 
 //>>SOFWTARE VERSION 
-int version_ID=8; //to be read 00.03, stored at adress 7 in memory
+int version_ID=9; //to be read 00.03, stored at adress 7 in memory
 //>>BUTTON ARRAYS<<
 debouncer harp_array[12];
 debouncer chord_matrix_array[22];
@@ -75,7 +75,12 @@ const int8_t flat_notes[6][6] = { // Notes affected by flats in each key, in har
   {BTN_B, BTN_E, BTN_A, BTN_D, BTN_G, BTN_C} // 6 flats: Bb, Eb, Ab, Db, Gb, Cb
 };
 
-float c_frequency = 130.81;                      // for C3
+const uint16_t master_tuning_adress = 255;      // device state, outside the preset array
+float a4_master_tuning = 440.0;                  // master tuning reference for A4, in Hz
+float c_frequency = 130.81 * (a4_master_tuning / 440.0); // for C3, tracks master tuning
+bool master_tuning_dirty = false;               // tuning changed, not yet written to flash
+elapsedMillis master_tuning_save_timer;         // time since the last tuning change
+const uint16_t master_tuning_save_delay = 1500; // ms of idle before committing to flash
 uint8_t chord_octave_change=4;
 uint8_t harp_octave_change=4;
 uint8_t chord_frame_shift=0;
@@ -293,6 +298,7 @@ void recalculate_timer();
 uint8_t calculate_note_harp(uint8_t string, bool slashed, bool sharp);
 uint8_t calculate_note_chord(uint8_t voice, bool slashed, bool sharp);
 void set_chord_voice_frequency(uint8_t i, uint16_t current_note);
+void set_harp_voice_frequency(uint8_t i, uint16_t current_note);
 void calculate_ws_array();
 void rythm_tick_function();
 
@@ -366,8 +372,12 @@ void control_command(uint8_t command, uint8_t parameter) {
     Serial.println("Reporting all data");
     int8_t midi_data_array[parameter_size * 2];
     for (int i = 0; i < parameter_size; i++) {
-      midi_data_array[2 * i] = current_sysex_parameters[i] % 128;
-      midi_data_array[2 * i + 1] = current_sysex_parameters[i] / 128;
+      // address 255 is master tuning: it lives outside the preset array, so
+      // substitute the live value (in tenths of a Hz) on the way out
+      int16_t value = (i == 255) ? (int16_t)lroundf(a4_master_tuning * 10.0f)
+                                 : current_sysex_parameters[i];
+      midi_data_array[2 * i] = value % 128;
+      midi_data_array[2 * i + 1] = value / 128;
     }
     usbMIDI.sendSysEx(parameter_size * 2, (const uint8_t *)&midi_data_array,0);
     break;
@@ -484,6 +494,52 @@ void play_note_selected_duration(int i,int current_note){
   usbMIDI.sendNoteOn(midi_base_note_transposed+current_note,chord_attack_velocity,chord_channel, chord_port);
   delayMicroseconds(midi_buffer_delay);
   chord_started_notes[i]=midi_base_note_transposed+current_note;
+}
+
+// Master tuning is device state, not preset state: it is stored in its own file
+// rather than in the preset array, so existing presets are untouched by it.
+void save_master_tuning() {
+  digitalWrite(_MUTE_PIN, LOW); // flash writes can stall the audio ISR
+  myfs.remove("master_tuning.txt");
+  File dataFile = myfs.open("master_tuning.txt", FILE_WRITE);
+  if (dataFile) {
+    dataFile.println(String(a4_master_tuning, 1));
+    Serial.println("Saved master tuning: " + String(a4_master_tuning, 1) + " Hz");
+    dataFile.close();
+  } else {
+    Serial.println("Error saving master tuning");
+  }
+  digitalWrite(_MUTE_PIN, HIGH);
+}
+
+void load_master_tuning() {
+  File dataFile = myfs.open("master_tuning.txt");
+  if (dataFile) {
+    String data_string = "";
+    while (dataFile.available()) {
+      data_string += char(dataFile.read());
+    }
+    a4_master_tuning = constrain(data_string.toFloat(), 432.0, 446.0);
+    Serial.println("Loaded master tuning: " + String(a4_master_tuning, 1) + " Hz");
+    dataFile.close();
+  } else {
+    Serial.println("No master tuning file, using default 440 Hz");
+    a4_master_tuning = 440.0;
+    save_master_tuning(); // create default file
+  }
+  c_frequency = 130.81 * (a4_master_tuning / 440.0);
+  // keep the array slot in step with the float: the pot bounds in
+  // parameter_lookup.h and the sysex dump both read address 255 from here.
+  current_sysex_parameters[master_tuning_adress] = (int16_t)lround(a4_master_tuning * 10.0);
+}
+
+// Commit the tuning to flash only once the user has stopped moving the control,
+// so dragging the slider does not write to flash on every step.
+void commit_master_tuning() {
+  if (master_tuning_dirty && master_tuning_save_timer > master_tuning_save_delay) {
+    save_master_tuning();
+    master_tuning_dirty = false;
+  }
 }
 
 void turn_off_led(IntervalTimer *timer) {
@@ -696,8 +752,10 @@ String serialize(int16_t data_array[], u_int16_t array_size) {
   dataString += String(current_bank_number); // to save the number of the bank for the online display
   dataString += ",";
   for (u_int16_t i = 2; i < array_size; i++) {
-    dataString += String(data_array[i]);
-    dataString += ",";
+    if (i != 255) { // skip master tuning: it is not preset state
+      dataString += String(data_array[i]);
+      dataString += ",";
+    }
   }
   return dataString;
 }
@@ -710,7 +768,9 @@ void deserialize(String input, int16_t data_array[]) {
   p = strtok(string, ",");
   int i = 0;
   while (p && i < parameter_size) {
-    data_array[i] = atoi(p);
+    if (i != 255) { // skip master tuning: it is not preset state
+      data_array[i] = atoi(p);
+    }
     p = strtok(NULL, ",");
     i++;
   }
@@ -788,6 +848,11 @@ void load_config(int bank_number) {
   mod_pot.setup(current_sysex_parameters[mod_pot_main_control], current_sysex_parameters[mod_pot_main_range], current_sysex_parameters[mod_pot_alternate_control], current_sysex_parameters[mod_pot_alternate_range], current_sysex_parameters,current_sysex_parameters[mod_pot_alternate_storage],apply_audio_parameter,mod_pot_alternate_storage);
   Serial.println("pot setup done");
   for (int i = 1; i < parameter_size; i++) {
+    // Master tuning is device state, not preset state. serialize()/deserialize()
+    // already skip it, so current_sysex_parameters[255] is never filled from the
+    // preset file; applying it here would push that stale slot into
+    // a4_master_tuning and overwrite what load_master_tuning() just read.
+    if (i == master_tuning_adress) continue;
     apply_audio_parameter(i, current_sysex_parameters[i]);
   }
   control_command(0, 0); // tell itself to update the remote controller if present
@@ -866,6 +931,8 @@ void setup() {
       set_led_color(0, 1.0, 1.0); // turn red light
     }
   }
+  // load tuning once, after the filesystem is up and before the first preset
+  load_master_tuning();
   Serial.println("Loading the preset");
   load_config(current_bank_number);
   // initializing the strings
@@ -1180,6 +1247,8 @@ void loop() {
   if (sysex_controler_connected && (USB1_PORTSC1, 7)) {
     sysex_controler_connected = false;
   }
+
+  commit_master_tuning();
 
   // Update debouncers
   hold_button.set(digitalRead(HOLD_BUTTON_PIN));
