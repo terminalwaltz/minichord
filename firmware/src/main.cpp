@@ -125,6 +125,7 @@ const int8_t double_flat_notes[1][1] = {
   {BTN_B}                                                   // Fb
 };
 
+const uint16_t master_tuning_adress = 255;      // device state, outside the preset array
 float a4_master_tuning = 440.0;                  // master tuning reference for A4, in Hz
 float c_frequency = 130.81 * (a4_master_tuning / 440.0); // for C3, tracks master tuning
 bool master_tuning_dirty = false;               // tuning changed, not yet written to flash
@@ -708,6 +709,9 @@ void load_master_tuning() {
     save_master_tuning(); // create default file
   }
   c_frequency = 130.81 * (a4_master_tuning / 440.0);
+  // keep the array slot in step with the float: the pot bounds in
+  // parameter_lookup.h and the sysex dump both read address 255 from here.
+  current_sysex_parameters[master_tuning_adress] = (int16_t)lround(a4_master_tuning * 10.0);
 }
 
 // Commit the tuning to flash only once the user has stopped moving the control,
@@ -1356,6 +1360,11 @@ void load_config(int bank_number) {
   mod_pot.setup(current_sysex_parameters[mod_pot_main_control], current_sysex_parameters[mod_pot_main_range], current_sysex_parameters[mod_pot_alternate_control], current_sysex_parameters[mod_pot_alternate_range], current_sysex_parameters,current_sysex_parameters[mod_pot_alternate_storage],apply_audio_parameter,mod_pot_alternate_storage);
   Serial.println("pot setup done");
   for (int i = 1; i < parameter_size; i++) {
+    // Master tuning is device state, not preset state. serialize()/deserialize()
+    // already skip it, so current_sysex_parameters[255] is never filled from the
+    // preset file; applying it here would push that stale slot into
+    // a4_master_tuning and overwrite what load_master_tuning() just read.
+    if (i == master_tuning_adress) continue;
     apply_audio_parameter(i, current_sysex_parameters[i]);
   }
   control_command(0, 0); // tell itself to update the remote controller if present
